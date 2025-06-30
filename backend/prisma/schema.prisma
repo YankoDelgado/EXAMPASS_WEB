@@ -1,0 +1,200 @@
+// Configuración del generador de cliente
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Configuración de la base de datos
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// MODELO USUARIO - Tabla principal de usuarios
+model User {
+  id       String   @id @default(cuid())
+  email    String   @unique
+  name     String
+  password String
+  role     UserRole
+  
+  // RELACIONES
+  studentProfile StudentProfile?        // Solo para estudiantes
+  examResults    ExamResult[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// MODELO PERFIL DE ESTUDIANTE - Datos del onboarding
+model StudentProfile {
+  id     String @id @default(cuid())
+  name   String                         // Nombre completo del estudiante
+  school String                         // Colegio
+  email  String                         // Email (puede ser diferente al de login)
+  
+  // Estado del flujo
+  onboardingCompleted Boolean @default(false)
+  examTaken          Boolean @default(false)
+  
+  // RELACIÓN UNO A UNO con User
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @unique
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// MODELO PROFESOR - Tabla de profesores
+model Professor {
+  id       String @id @default(cuid())
+  name     String
+  subject  String                       // Asignatura
+  
+  // RELACIONES
+  questions Question[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// MODELO PREGUNTA - Tabla de preguntas del examen
+model Question {
+  id                   String   @id @default(cuid())
+  header               String                   // Enunciado
+  alternatives         String[]                 // 4 alternativas
+  correctAnswer        Int                      // Índice correcto (0-3)
+  educationalIndicator String                   // Contenido que mide
+  isActive            Boolean  @default(true)   // Para activar/desactivar preguntas
+  
+  // RELACIÓN CON PROFESOR
+  professor   Professor @relation(fields: [professorId], references: [id])
+  professorId String
+  
+  // RELACIONES
+  examAnswers ExamAnswer[]
+  examQuestions ExamQuestion[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// MODELO EXAMEN - Instancia específica de un examen
+model Exam {
+  id          String      @id @default(cuid())
+  title       String      @default("Examen de Conocimientos")
+  description String?
+  status      ExamStatus  @default(ACTIVE)
+  
+  // Configuración del examen
+  totalQuestions Int @default(5)                // Siempre 5 preguntas
+  timeLimit     Int?                            // Tiempo límite en minutos (opcional)
+  
+  // RELACIONES
+  examResults ExamResult[]
+  examQuestions ExamQuestion[]                  // Preguntas específicas de este examen
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// MODELO PREGUNTA DE EXAMEN - Relación muchos a muchos entre Exam y Question
+model ExamQuestion {
+  id       String @id @default(cuid())
+  order    Int                                  // Orden de la pregunta en el examen (1-5)
+  
+  // RELACIONES
+  exam       Exam     @relation(fields: [examId], references: [id])
+  examId     String
+  
+  question   Question @relation(fields: [questionId], references: [id])
+  questionId String
+  
+  @@unique([examId, questionId])               // Una pregunta no puede repetirse en el mismo examen
+  @@unique([examId, order])                    // Cada orden debe ser único por examen
+}
+
+// MODELO RESULTADO DE EXAMEN - Resultado completo del estudiante
+model ExamResult {
+  id              String @id @default(cuid())
+  
+  // Puntajes
+  totalScore      Int                          // Respuestas correctas
+  totalQuestions  Int                          // Total de preguntas (5)
+  percentage      Float                        // Porcentaje general
+  
+  // Estado del examen
+  status          ExamResultStatus @default(IN_PROGRESS)
+  startedAt       DateTime         @default(now())
+  completedAt     DateTime?
+  
+  // RELACIONES
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+  
+  exam   Exam   @relation(fields: [examId], references: [id])
+  examId String
+  
+  answers ExamAnswer[]
+  reportData ExamReport?                       // Reporte detallado
+  
+  createdAt DateTime @default(now())
+}
+
+// MODELO RESPUESTA DE EXAMEN - Respuestas individuales
+model ExamAnswer {
+  id               String @id @default(cuid())
+  selectedAnswer   Int?                        // Respuesta seleccionada (0-3), null si no respondió
+  isCorrect        Boolean @default(false)
+  timeSpent        Int?                        // Tiempo en segundos que tardó en responder
+  
+  // RELACIONES
+  question   Question @relation(fields: [questionId], references: [id])
+  questionId String
+  
+  examResult   ExamResult @relation(fields: [examResultId], references: [id])
+  examResultId String
+  
+  createdAt DateTime @default(now())
+}
+
+// MODELO REPORTE - Reportes detallados por contenido
+model ExamReport {
+  id                    String @id @default(cuid())
+  
+  // Porcentajes por contenido educativo
+  contentBreakdown      Json                  // {"Matemáticas": 80, "Ciencias": 60, etc.}
+  
+  // Análisis detallado
+  strengths            String[]               // Áreas fuertes
+  weaknesses           String[]               // Áreas a mejorar
+  recommendations      String[]               // Recomendaciones
+  
+  // Datos del profesor asignado (si aplica)
+  assignedProfessor    String?                // Nombre del profesor recomendado
+  professorSubject     String?                // Materia del profesor
+  
+  // RELACIÓN UNO A UNO con ExamResult
+  examResult   ExamResult @relation(fields: [examResultId], references: [id])
+  examResultId String     @unique
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ENUMS
+enum UserRole {
+  ADMIN
+  STUDENT
+}
+
+enum ExamStatus {
+  ACTIVE
+  INACTIVE
+  DRAFT
+}
+
+enum ExamResultStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
