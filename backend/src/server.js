@@ -19,7 +19,7 @@ app.use(
     cors({
         origin: [process.env.VITE_API_URL, "http://localhost:5173"],
         credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE"],
+        methods: ["GET", "POST", "PUT", "DELETE","OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     }),
 )
@@ -87,7 +87,7 @@ app.use((req, res) => {
 app.listen(PORT, () => {
     console.log(`Servidor ExamPass ejecutándose en http://localhost:${PORT}`)
     console.log(`Prisma Studio: npx prisma studio`)
-    console.log(`Frontend: http://localhost:5173`)
+    console.log(`Frontend: ${process.env.VITE_API_URL || "http://localhost:5173"}`)
     console.log(`Entorno: ${process.env.NODE_ENV}`)
 })
 
