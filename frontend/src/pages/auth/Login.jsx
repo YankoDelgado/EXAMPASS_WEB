@@ -120,20 +120,17 @@ const Login = () => {
                 </Card.Body>
             </Card>
 
-            {/* Información de prueba para desarrollo */}
-            {import.meta.env.DEV && (
-                <Card className="mt-3 border-info">
-                <Card.Body className="p-3">
-                    <h6 className="text-info mb-2">Cuentas de prueba:</h6>
-                    <small className="text-muted d-block">
-                    <strong>Admin:</strong> admin@exampass.com / 12345678
-                    </small>
-                    <small className="text-muted d-block">
-                    <strong>Estudiante:</strong> estudiante@exampass.com / 12345678
-                    </small>
-                </Card.Body>
-                </Card>
-            )}
+            <Card className="mt-3 border-info">
+            <Card.Body className="p-3">
+                <h6 className="text-info mb-2">Cuentas de prueba:</h6>
+                <small className="text-muted d-block">
+                <strong>Admin:</strong> admin@exampass.com / 12345678
+                </small>
+                <small className="text-muted d-block">
+                <strong>Estudiante:</strong> estudiante@exampass.com / 12345678
+                </small>
+            </Card.Body>
+            </Card>
             </Col>
         </Row>
         </Container>
