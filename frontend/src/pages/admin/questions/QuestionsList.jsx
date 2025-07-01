@@ -19,7 +19,7 @@ const QuestionsList = () => {
         search: searchParams.get("search") || "",
         professor: searchParams.get("professor") || "",
         indicator: searchParams.get("indicator") || "",
-        isActive: searchParams.get("isActive") || "",
+        isActive: searchParams.get("isActive") || "true",
         page: Number.parseInt(searchParams.get("page")) || 1,
         limit: Number.parseInt(searchParams.get("limit")) || 10,
     })
@@ -40,6 +40,7 @@ const QuestionsList = () => {
     const loadQuestions = async () => {
         try {
             setLoading(true)
+            console.log("Enviando filtros:", filters)
             const data = await questionService.getAll(filters)
             setQuestions(data.questions || [])
             setPagination({
@@ -110,7 +111,7 @@ const QuestionsList = () => {
             search: "",
             professor: "",
             indicator: "",
-            isActive: "",
+            isActive: "true",
             page: 1,
             limit: 10,
         })
@@ -161,7 +162,7 @@ const QuestionsList = () => {
         }
         items.push(
             <Pagination.Item key={pagination.pages} onClick={() => handlePageChange(pagination.pages)}>
-            {pagination.pages}
+                {pagination.pages}
             </Pagination.Item>,
         )
         }

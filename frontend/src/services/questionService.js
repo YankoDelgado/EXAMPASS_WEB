@@ -9,11 +9,14 @@ export const questionService = {
             if (params.search) queryParams.append("search", params.search)
             if (params.professor) queryParams.append("professor", params.professor)
             if (params.indicator) queryParams.append("indicator", params.indicator)
-            if (params.isActive !== undefined) queryParams.append("isActive", params.isActive)
-            if (params.page) queryParams.append("page", params.page)
-            if (params.limit) queryParams.append("limit", params.limit)
+
+            if (params.isActive !== undefined && params.isActive !== "") queryParams.append("isActive", params.isActive)
+
+            queryParams.append("page", params.page||1)
+            queryParams.append("limit", params.limit||10)
 
             const url = queryParams.toString() ? `/questions?${queryParams}` : "/questions"
+            
             const response = await API.get(url)
             return response.data
         } catch (error) {

@@ -7,27 +7,37 @@ const router = express.Router()
 //Obtener todas las preguntas
 router.get("/", authenticateToken, async (req, res) => {
     try {
-        const { professorId, subject, isActive } = req.query
+        const { search, professor, indicator, isActive, page = 1, limit = 10 } = req.query
+        const pageNumber = parseInt(page);
+        const limitNumber = parseInt(limit);
+        const skip = (pageNumber - 1) * limitNumber;
 
         //Construir filtros dinámicos
         const where = {}
 
-        if(professorId) {
-            where.professorId = professorId
+        if(search) {
+            where.OR = [
+                { header: { contains: search, mode: "insensitive" } },
+                { educationalIndicator: { contains: search, mode: "insensitive" } }
+            ];
         }
 
-        if(subject) {
-            where.professor = {
-                subject: {
-                    contains: subject,
-                    mode: "insensitive"
-                }
-            }
+        if (professor) {
+            where.professorId = professor;
+        }
+
+        if (indicator) {
+            where.educationalIndicator = {
+                contains: indicator,
+                mode: "insensitive"
+            };
         }
 
         if(isActive !== undefined) {
             where.isActive = isActive === "true"
         }
+
+        const total = await prisma.question.count({ where });
 
         const questions = await prisma.question.findMany({
             where,
@@ -42,14 +52,18 @@ router.get("/", authenticateToken, async (req, res) => {
             },
             orderBy: {
                 createdAt: "desc"
-            }
-        })
+            },
+            skip,
+            take: limitNumber
+        });
 
         res.json({
             questions,
-            total: questions.length,
-            filters: {professorId, subject, isActive},
-        })
+            total,
+            pages: Math.ceil(total / limitNumber),
+            currentPage: pageNumber,
+            filters: { search, professor, indicator, isActive },
+        });
     } catch (error) {
         console.error("Error obteniendo preguntas:", error)
         res.status(500).json({error: "Error interno del servidor"})
