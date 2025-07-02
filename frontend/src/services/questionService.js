@@ -68,7 +68,7 @@ export const questionService = {
             throw error
         }
     },
-/*
+
     // Obtener indicadores educativos únicos
     getEducationalIndicators: async () => {
         try {
@@ -79,7 +79,7 @@ export const questionService = {
             return { indicators: [] }
         }
     },
-*/
+
     // Validar pregunta antes de guardar
     validate: async (questionData) => {
         try {
