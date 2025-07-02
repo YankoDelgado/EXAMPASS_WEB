@@ -32,7 +32,7 @@ app.use(
     }),
 )
 app.use(cors());
-app.options('*', cors());
+app.options('*', cors())
 
 app.use(express.json())
 
@@ -41,12 +41,6 @@ app.use((req, res, next)=>{
     console.log(`${req.method} ${req.path} - ${new Date().toISOString()}`)
     next()
 })
-
-app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", req.headers.origin || corsOptions.origin[0]);
-    res.header("Access-Control-Allow-Credentials", "true");
-    next();
-});
 
 // Rutas principales
 app.get("/", (req, res)=>{
