@@ -64,7 +64,7 @@ const QuestionsList = () => {
             console.error("Error cargando profesores:", error)
         }
     }
-
+/*
     const loadIndicators = async () => {
         try {
             const data = await questionService.getEducationalIndicators()
@@ -73,7 +73,7 @@ const QuestionsList = () => {
             console.error("Error cargando indicadores:", error)
         }
     }
-
+*/
     const handleFilterChange = (name, value) => {
         setFilters((prev) => ({
             ...prev,
