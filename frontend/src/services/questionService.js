@@ -68,7 +68,18 @@ export const questionService = {
             throw error
         }
     },
-
+/*
+    // Obtener indicadores educativos únicos
+    getEducationalIndicators: async () => {
+        try {
+            const response = await API.get("/questions/indicators")
+            return response.data
+        } catch (error) {
+            console.error("Error obteniendo indicadores:", error)
+            return { indicators: [] }
+        }
+    },
+*/
     // Validar pregunta antes de guardar
     validate: async (questionData) => {
         try {

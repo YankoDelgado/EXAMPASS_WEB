@@ -58,7 +58,7 @@ const QuestionsList = () => {
 
     const loadProfessors = async () => {
         try {
-            const data = await professorService.getAll({ limit: 100 })
+            const data = await professorService.getAll({ limit: 100, fields: 'id,name,subject'})
             setProfessors(data.professors || [])
         } catch (error) {
             console.error("Error cargando profesores:", error)
