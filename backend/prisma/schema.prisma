@@ -49,7 +49,11 @@ model Professor {
   id       String @id @default(cuid())
   name     String
   subject  String                       // Asignatura
-  
+  email    String?   
+  phone    String?          
+  status   String @default("ACTIVE") // Estado (ACTIVE/INACTIVE)
+  bio      String?          // Biografía opcional
+
   // RELACIONES
   questions Question[]
   
