@@ -14,7 +14,7 @@ const ProfessorsCreate = () => {
         email: "",
         subject: "",
         phone: "",
-        bio: "",
+        //bio: "",
         isActive: true,
     })
 
@@ -61,9 +61,9 @@ const ProfessorsCreate = () => {
             newErrors.phone = "El teléfono no es válido"
         }
 
-        if(formData.bio && formData.bio.length > 500) {
+        /*if(formData.bio && formData.bio.length > 500) {
             newErrors.bio = "La biografía no puede exceder 500 caracteres"
-        }
+        }*/
 
         setErrors(newErrors)
         return Object.keys(newErrors).length === 0
@@ -87,7 +87,7 @@ const ProfessorsCreate = () => {
                 email: formData.email.trim().toLowerCase(),
                 subject: formData.subject.trim(),
                 phone: formData.phone.trim() || null,
-                bio: formData.bio.trim() || null,
+                //bio: formData.bio.trim() || null,
             }
 
             await professorService.create(professorData)
@@ -219,7 +219,7 @@ const ProfessorsCreate = () => {
                         </Form.Group>
                     </Col>
                     </Row>
-
+                    {/*
                     <Form.Group className="mb-3">
                     <Form.Label>Biografía</Form.Label>
                     <Form.Control
@@ -235,7 +235,7 @@ const ProfessorsCreate = () => {
                     <Form.Text className="text-muted">{formData.bio.length}/500 caracteres</Form.Text>
                     <Form.Control.Feedback type="invalid">{errors.bio}</Form.Control.Feedback>
                     </Form.Group>
-
+                    */}
                     <Form.Group className="mb-4">
                     <Form.Check
                         type="checkbox"
