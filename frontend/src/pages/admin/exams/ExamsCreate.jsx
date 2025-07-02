@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Container, Row, Col, Form, Button, Card, Alert, Spinner } from "react-bootstrap"
 import { examService } from "../../../services/examService"
-import { questionService } from "../../../services/questionService"
+import { getAll } from "../../../services/questionService"
 
 const ExamsCreate = () => {
     const navigate = useNavigate()
@@ -22,7 +22,8 @@ const ExamsCreate = () => {
 
     const loadQuestions = async () => {
         try {
-        const data = await questionService.getQuestions({ isActive: true })
+        const data = await questionService.getAll({ isActive: true, limit: 100 })
+        console.log("Preguntas obtenidas:", data)
         setAvailableQuestions(data.questions || [])
         } catch (err) {
         console.error("Error cargando preguntas:", err)
