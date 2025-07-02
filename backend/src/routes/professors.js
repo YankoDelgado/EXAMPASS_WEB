@@ -7,7 +7,7 @@ const router= express.Router()
 // Obtener todos los profesores
 router.get("/", authenticateToken, async (req, res) => {
     try {
-        const professors = await prisma.professor.findMany({
+        const professorsRaw = await prisma.professor.findMany({
         include: {
             questions: {
             select: {
@@ -27,6 +27,11 @@ router.get("/", authenticateToken, async (req, res) => {
             createdAt: "desc",
         },
         })
+
+        const professors = professorsRaw.map((p) => ({
+            ...p,
+            isActive: p.status === "ACTIVE",
+        }))
 
         res.json({
             professors,
