@@ -6,10 +6,6 @@ const API = axios.create({
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
     }
 })
 
