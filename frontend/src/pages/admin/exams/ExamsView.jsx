@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Container, Card, Button, Alert, Row, Col, Badge, Spinner, Tab, Tabs } from "react-bootstrap"
+import { Container, Card, Button, Alert, Row, Col, Badge, Spinner, Tab, Tabs, Modal } from "react-bootstrap"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { examService } from "../../../services/examService"
 
