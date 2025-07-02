@@ -74,6 +74,7 @@ router.get("/", authenticateToken, async (req, res) => {
 router.get("/:id", authenticateToken, async (req, res) => {
     try {
         const {id} = req.params
+        const { includeStats } = req.query;
 
         const question = await prisma.question.findUnique({
             where: {id},
@@ -85,6 +86,11 @@ router.get("/:id", authenticateToken, async (req, res) => {
                         subject: true,
                     }
                 }
+            },
+            _count: {
+                select: {
+                    examAnswers: true
+                }
             }
         })
 
@@ -92,7 +98,39 @@ router.get("/:id", authenticateToken, async (req, res) => {
             return res.status(404).json({error:"Pregunta no encontrada"})
         }
 
-        res.json(question)
+        let stats = null;
+        if (includeStats) {
+            const correctAnswers = await prisma.examAnswer.count({
+                where: {
+                    questionId: id,
+                    isCorrect: true
+                }
+            });
+
+            const totalAnswers = question._count.examAnswers;
+            
+            stats = {
+                timesUsed: totalAnswers,
+                correctRate: totalAnswers > 0 
+                    ? Math.round((correctAnswers / totalAnswers) * 100) 
+                    : 0,
+                lastUsed: await prisma.examAnswer.findFirst({
+                    where: { questionId: id },
+                    orderBy: { createdAt: 'desc' },
+                    select: { createdAt: true }
+                }).then(last => last?.createdAt)
+            };
+        }
+
+        res.json({
+            success: true,
+            question,
+            stats: stats || {
+                timesUsed: 0,
+                correctRate: 0,
+                lastUsed: null
+            }
+        });
     } catch (error) {
         console.error("Error obteniendo pregunta:", error)
         res.status(500).json({error:"Error interno del servidor"})

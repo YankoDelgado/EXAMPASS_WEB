@@ -28,8 +28,29 @@ export const questionService = {
     // Obtener pregunta por ID
     getById: async (id) => {
         try {
-            const response = await API.get(`/questions/${id}`)
-            return response.data
+            const response = await API.get(`/questions/${id}`, {
+                params: {
+                    includeStats: true 
+                }
+            });
+
+            if (!response.data) {
+            throw new Error("La respuesta del servidor no contiene datos");
+        }
+        
+        // Asegurar que la pregunta existe en la respuesta
+        if (!response.data.question) {
+            throw new Error("Pregunta no encontrada en la respuesta");
+        }
+        
+        return {
+            question: response.data.question,
+            stats: response.data.stats || {
+                timesUsed: 0,
+                correctRate: 0,
+                lastUsed: null
+            }
+        };
         } catch (error) {
             console.error("Error obteniendo pregunta:", error)
             throw error

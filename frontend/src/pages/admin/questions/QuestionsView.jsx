@@ -25,13 +25,20 @@ const QuestionsView = () => {
         try {
             setLoading(true)
             setError("")
-            const data = await questionService.getById(id)
-            setQuestion(data.question)
+            setQuestion(null)
 
-            // Si el backend devuelve estadísticas, las usamos
-            if (data.stats) {
-                setStats(data.stats)
+            if (!data || !data.question) {
+                throw new Error("La respuesta no contiene datos válidos");
             }
+
+            setQuestion(data.question);
+            
+            // Manejar estadísticas
+            setStats({
+                timesUsed: data.stats?.timesUsed || 0,
+                correctRate: data.stats?.correctRate || 0,
+                lastUsed: data.stats?.lastUsed || null
+            });
         } catch (error) {
             console.error("Error cargando pregunta:", error)
             if (error.response?.status === 404) {
