@@ -85,11 +85,11 @@ router.get("/:id", authenticateToken, async (req, res) => {
                         name: true,
                         subject: true,
                     }
-                }
-            },
-            _count: {
-                select: {
-                    examAnswers: true
+                },
+                _count: {
+                    select: {
+                        examAnswers: true
+                    }
                 }
             }
         })
@@ -98,38 +98,41 @@ router.get("/:id", authenticateToken, async (req, res) => {
             return res.status(404).json({error:"Pregunta no encontrada"})
         }
 
-        let stats = null;
-        if (includeStats) {
-            const correctAnswers = await prisma.examAnswer.count({
-                where: {
-                    questionId: id,
-                    isCorrect: true
-                }
-            });
+        let stats = {
+            timesUsed: 0,
+            correctRate: 0,
+            lastUsed: null
+        };
 
-            const totalAnswers = question._count.examAnswers;
-            
-            stats = {
-                timesUsed: totalAnswers,
-                correctRate: totalAnswers > 0 
-                    ? Math.round((correctAnswers / totalAnswers) * 100) 
-                    : 0,
-                lastUsed: await prisma.examAnswer.findFirst({
+        if (includeStats && question._count.examAnswers > 0) {
+            const [correctAnswers, lastAnswer] = await Promise.all([
+                prisma.examAnswer.count({
+                    where: {
+                        questionId: id,
+                        isCorrect: true
+                    }
+                }),
+                prisma.examAnswer.findFirst({
                     where: { questionId: id },
                     orderBy: { createdAt: 'desc' },
                     select: { createdAt: true }
-                }).then(last => last?.createdAt)
+                })
+            ]);
+            
+            stats = {
+                timesUsed: question._count.examAnswers,
+                correctRate: Math.round((correctAnswers / question._count.examAnswers) * 100),
+                lastUsed: lastAnswer?.createdAt || null
             };
         }
 
         res.json({
             success: true,
-            question,
-            stats: stats || {
-                timesUsed: 0,
-                correctRate: 0,
-                lastUsed: null
-            }
+            question: {
+                ...question,
+                _count: undefined
+            },
+            stats
         });
     } catch (error) {
         console.error("Error obteniendo pregunta:", error)
