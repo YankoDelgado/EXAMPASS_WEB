@@ -1,6 +1,6 @@
-// Componente ExamsCreate.jsx simplificado y estilizado
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { Container, Row, Col, Form, Button, Card, Alert, Spinner, Badge } from "react-bootstrap"
 import { examService } from "../../../services/examService"
 import { questionService } from "../../../services/questionService"
 
@@ -92,133 +92,128 @@ const ExamsCreate = () => {
     }
 
     return (
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+        <Container>
+        <div className="d-flex justify-content-between align-items-center mb-4">
             <div>
-            <h1 className="text-2xl font-bold text-gray-900">Crear Nuevo Examen</h1>
-            <p className="text-gray-600">Configura un nuevo examen para los estudiantes</p>
+            <h1>Crear Nuevo Examen</h1>
+            <p className="text-muted">Configura un nuevo examen para los estudiantes</p>
             </div>
-            <button
-            type="button"
-            onClick={() => navigate("/admin/exams")}
-            className="text-gray-600 hover:text-gray-900"
-            >Volver a Lista</button>
+            <Button variant="outline-secondary" onClick={() => navigate("/admin/exams")}>Volver a Lista</Button>
         </div>
 
-        {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{error}</div>
-        )}
+        {error && <Alert variant="danger">{error}</Alert>}
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Información del Examen</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Título del Examen *</label>
-                <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-                />
-            </div>
+        <Form onSubmit={handleSubmit}>
+            <Card className="mb-4">
+            <Card.Header><strong>Información del Examen</strong></Card.Header>
+            <Card.Body>
+                <Row className="mb-3">
+                <Col md={12}>
+                    <Form.Group>
+                    <Form.Label>Título del Examen <span className="text-danger">*</span></Form.Label>
+                    <Form.Control
+                        type="text"
+                        value={formData.title}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                        placeholder="Ingrese el título del examen"
+                        required
+                    />
+                    </Form.Group>
+                </Col>
+                </Row>
 
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Materia *</label>
-                <select
-                value={formData.subject}
-                onChange={(e) => setFormData((prev) => ({ ...prev, subject: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-                >
-                <option value="">Seleccionar materia</option>
-                {subjects.map((subject) => (
-                    <option key={subject} value={subject}>{subject}</option>
-                ))}
-                </select>
-            </div>
+                <Row>
+                <Col md={6}>
+                    <Form.Group className="mb-3">
+                    <Form.Label>Materia <span className="text-danger">*</span></Form.Label>
+                    <Form.Select
+                        value={formData.subject}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, subject: e.target.value }))}
+                        required
+                    >
+                        <option value="">Seleccionar materia</option>
+                        {subjects.map((subject) => (
+                        <option key={subject} value={subject}>{subject}</option>
+                        ))}
+                    </Form.Select>
+                    </Form.Group>
+                </Col>
 
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
-                <select
-                value={formData.status}
-                onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                <option value="draft">Borrador</option>
-                <option value="active">Activo</option>
-                <option value="inactive">Inactivo</option>
-                </select>
-            </div>
+                <Col md={6}>
+                    <Form.Group className="mb-3">
+                    <Form.Label>Estado</Form.Label>
+                    <Form.Select
+                        value={formData.status}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
+                    >
+                        <option value="draft">Borrador</option>
+                        <option value="active">Activo</option>
+                        <option value="inactive">Inactivo</option>
+                    </Form.Select>
+                    </Form.Group>
+                </Col>
+                </Row>
 
-            <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Duración (minutos)</label>
-                <input
-                type="number"
-                min="1"
-                max="300"
-                value={formData.duration}
-                onChange={(e) => setFormData((prev) => ({ ...prev, duration: Number.parseInt(e.target.value) }))}
-                disabled={formData.duration === 0}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <div className="mt-2">
-                <label className="flex items-center">
-                    <input
+                <Row>
+                <Col md={6}>
+                    <Form.Group className="mb-3">
+                    <Form.Label>Duración (minutos)</Form.Label>
+                    <Form.Control
+                        type="number"
+                        min="0"
+                        max="300"
+                        value={formData.duration}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, duration: Number.parseInt(e.target.value) }))}
+                        disabled={formData.duration === 0}
+                    />
+                    </Form.Group>
+                </Col>
+                <Col md={6} className="d-flex align-items-end">
+                    <Form.Check
                     type="checkbox"
+                    label="Sin límite de tiempo"
                     checked={formData.duration === 0}
                     onChange={(e) => setFormData((prev) => ({ ...prev, duration: e.target.checked ? 0 : 60 }))}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <span className="ml-2 text-sm text-gray-700">Sin límite de tiempo</span>
-                </label>
-                </div>
-            </div>
-            </div>
-        </div>
+                </Col>
+                </Row>
+            </Card.Body>
+            </Card>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Seleccionar Preguntas</h2>
-            {availableQuestions.length > 0 ? (
-            <div className="space-y-2">
-                {availableQuestions.map((question) => (
-                <label
-                    key={question.id}
-                    className={`flex items-start space-x-3 p-2 rounded cursor-pointer hover:bg-gray-50 ${selectedQuestions.some((q) => q.id === question.id) ? 'bg-blue-50' : ''}`}
-                >
-                    <input
-                    type="checkbox"
-                    checked={selectedQuestions.some((q) => q.id === question.id)}
-                    onChange={() => handleQuestionToggle(question)}
-                    disabled={!selectedQuestions.some((q) => q.id === question.id) && selectedQuestions.length >= 5}
-                    className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            <Card className="mb-4">
+            <Card.Header><strong>Seleccionar Preguntas</strong></Card.Header>
+            <Card.Body>
+                {availableQuestions.length > 0 ? (
+                <>
+                    {availableQuestions.map((question) => (
+                    <Form.Check
+                        key={question.id}
+                        type="checkbox"
+                        label={question.question}
+                        checked={selectedQuestions.some((q) => q.id === question.id)}
+                        onChange={() => handleQuestionToggle(question)}
+                        disabled={!selectedQuestions.some((q) => q.id === question.id) && selectedQuestions.length >= 5}
+                        className="mb-2"
                     />
-                    <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{question.question}</p>
-                    <p className="text-xs text-gray-500">Dificultad: {question.difficulty} | Tipo: {question.type}</p>
-                    </div>
-                </label>
-                ))}
-            </div>
-            ) : (
-            <p className="text-gray-500 text-center py-4">No hay preguntas disponibles para esta materia</p>
-            )}
-            <p className="mt-2 text-sm text-gray-600">{selectedQuestions.length} / 5 preguntas seleccionadas</p>
-        </div>
+                    ))}
+                    <Form.Text className="text-muted">{selectedQuestions.length} / 5 preguntas seleccionadas</Form.Text>
+                </>
+                ) : (
+                <p className="text-muted">No hay preguntas disponibles para esta materia</p>
+                )}
+            </Card.Body>
+            </Card>
 
-        <div className="flex justify-end space-x-4">
-            <button
-            type="button"
-            onClick={() => navigate("/admin/exams")}
-            className="px-6 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors"
-            >Cancelar</button>
-            <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-            >{loading ? "Creando..." : "Crear Examen"}</button>
-        </div>
-        </form>
+            <div className="d-flex justify-content-end gap-2">
+            <Button variant="secondary" onClick={() => navigate("/admin/exams")} disabled={loading}>
+                Cancelar
+            </Button>
+            <Button variant="primary" type="submit" disabled={loading}>
+                {loading ? <><Spinner animation="border" size="sm" className="me-2" />Creando...</> : "Crear Examen"}
+            </Button>
+            </div>
+        </Form>
+        </Container>
     )
 }
 
