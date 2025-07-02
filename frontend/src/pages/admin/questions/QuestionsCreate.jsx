@@ -152,6 +152,7 @@ const QuestionsCreate = () => {
             setError("")
             setSuccess("")
 
+            
             // Filtrar alternativas vacías y ajustar índice de respuesta correcta
             const validAlternatives = formData.alternatives
                 .map((alt, index) => ({ text: alt.trim(), originalIndex: index }))
@@ -168,14 +169,29 @@ const QuestionsCreate = () => {
                 isActive: formData.isActive,
             }
 
-            await questionService.create(questionData)
+            const response = await questionService.create(questionData);
 
-            setSuccess("Pregunta creada exitosamente")
+            // Verificar si la respuesta indica éxito
+            if (response && response.message) {
+                setSuccess(response.message || "Pregunta creada exitosamente");
+                
+                // Resetear formulario después de éxito
+                setFormData({
+                    header: "",
+                    alternatives: ["", "", "", ""],
+                    correctAnswer: 0,
+                    educationalIndicator: "",
+                    professorId: searchParams.get("professor") || "",
+                    isActive: true,
+                });
 
-            // Redirigir después de 2 segundos
-            setTimeout(() => {
-                navigate("/admin/questions")
-            }, 2000)
+                // Redirigir después de 2 segundos
+                setTimeout(() => {
+                    navigate("/admin/questions");
+                }, 2000);
+            } else {
+                throw new Error("No se recibió confirmación del servidor");
+            }
         } catch (error) {
             console.error("Error creando pregunta:", error)
 

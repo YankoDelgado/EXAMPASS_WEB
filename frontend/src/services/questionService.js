@@ -40,10 +40,24 @@ export const questionService = {
     create: async (questionData) => {
         try {
             const response = await API.post("/questions", questionData)
-            return response.data
+            // Verificar respuesta exitosa
+            if (response.data && response.data.success !== false) {
+                return response.data;
+            }
+        
+            // Si la respuesta indica error
+            throw new Error(response.data?.error || "Error desconocido al crear pregunta");
         } catch (error) {
-            console.error("Error creando pregunta:", error)
-            throw error
+            console.error("Error creando pregunta:", {
+                error: error.response?.data || error.message,
+                questionData
+            });
+        
+            const errorMessage = error.response?.data?.error 
+                || error.response?.data?.message 
+                || "Error creando pregunta. Verifica los datos e intenta nuevamente.";
+                
+            throw new Error(errorMessage);
         }
     },
 

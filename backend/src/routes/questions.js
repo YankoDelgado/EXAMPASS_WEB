@@ -157,9 +157,11 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
         console.log("Pregunta creada:", {id: question.id, header: question.header})
 
         res.status(201).json({
+            success: true,
             message: "Pregunta creada exitosamente",
-            question
-        })
+            question,
+            timestamp: new Date().toISOString()
+        });
     } catch (error) {
         console.error("Error creando pregunta:", error)
         res.status(500).json({
