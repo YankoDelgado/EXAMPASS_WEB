@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Container, Row, Col, Form, Button, Card, Alert, Spinner } from "react-bootstrap"
 import { examService } from "../../../services/examService"
-import { getAll } from "../../../services/questionService"
+import { questionService } from "../../../services/questionService"
 
 const ExamsCreate = () => {
     const navigate = useNavigate()
