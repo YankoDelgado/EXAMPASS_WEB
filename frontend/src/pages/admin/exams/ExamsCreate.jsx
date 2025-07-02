@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { Container, Row, Col, Form, Button, Card, Alert, Spinner, Badge } from "react-bootstrap"
+import { Container, Row, Col, Form, Button, Card, Alert, Spinner } from "react-bootstrap"
 import { examService } from "../../../services/examService"
 import { questionService } from "../../../services/questionService"
 
@@ -8,36 +8,21 @@ const ExamsCreate = () => {
     const navigate = useNavigate()
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
-    const [subjects, setSubjects] = useState([])
     const [selectedQuestions, setSelectedQuestions] = useState([])
     const [availableQuestions, setAvailableQuestions] = useState([])
 
     const [formData, setFormData] = useState({
         title: "",
         description: "",
-        subject: "",
-        duration: 60,
-        status: "draft"
+        status: "DRAFT",
+        timeLimit: 60,
     })
 
-    useEffect(() => { loadSubjects() }, [])
+    useEffect(() => { loadQuestions() }, [])
 
-    useEffect(() => {
-        if (formData.subject) loadQuestionsBySubject()
-    }, [formData.subject])
-
-    const loadSubjects = async () => {
+    const loadQuestions = async () => {
         try {
-        const data = await questionService.getSubjects()
-        setSubjects(data.subjects || [])
-        } catch (err) {
-        console.error("Error cargando materias:", err)
-        }
-    }
-
-    const loadQuestionsBySubject = async () => {
-        try {
-        const data = await questionService.getQuestions({ subject: formData.subject })
+        const data = await questionService.getQuestions({ isActive: true })
         setAvailableQuestions(data.questions || [])
         } catch (err) {
         console.error("Error cargando preguntas:", err)
@@ -52,8 +37,8 @@ const ExamsCreate = () => {
         return
         }
 
-        if (!formData.subject) {
-        setError("La materia es requerida")
+        if (!formData.description.trim()) {
+        setError("La descripción es requerida")
         return
         }
 
@@ -67,9 +52,12 @@ const ExamsCreate = () => {
         setError("")
 
         const examData = {
-            ...formData,
-            questions: selectedQuestions,
-            questionIds: selectedQuestions.map((q) => q.id)
+            title: formData.title.trim(),
+            description: formData.description.trim(),
+            status: formData.status,
+            timeLimit: formData.timeLimit,
+            questionIds: selectedQuestions.map((q) => q.id),
+            totalQuestions: selectedQuestions.length,
         }
 
         await examService.createExam(examData)
@@ -86,8 +74,7 @@ const ExamsCreate = () => {
         setSelectedQuestions((prev) => {
         const exists = prev.find((q) => q.id === question.id)
         if (exists) return prev.filter((q) => q.id !== question.id)
-        else if (prev.length < 5) return [...prev, question]
-        else return prev
+        else return [...prev, question]
         })
     }
 
@@ -122,34 +109,18 @@ const ExamsCreate = () => {
                 </Col>
                 </Row>
 
-                <Row>
-                <Col md={6}>
-                    <Form.Group className="mb-3">
-                    <Form.Label>Materia <span className="text-danger">*</span></Form.Label>
-                    <Form.Select
-                        value={formData.subject}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, subject: e.target.value }))}
+                <Row className="mb-3">
+                <Col md={12}>
+                    <Form.Group>
+                    <Form.Label>Descripción <span className="text-danger">*</span></Form.Label>
+                    <Form.Control
+                        as="textarea"
+                        rows={3}
+                        value={formData.description}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                        placeholder="Descripción del examen"
                         required
-                    >
-                        <option value="">Seleccionar materia</option>
-                        {subjects.map((subject) => (
-                        <option key={subject} value={subject}>{subject}</option>
-                        ))}
-                    </Form.Select>
-                    </Form.Group>
-                </Col>
-
-                <Col md={6}>
-                    <Form.Group className="mb-3">
-                    <Form.Label>Estado</Form.Label>
-                    <Form.Select
-                        value={formData.status}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
-                    >
-                        <option value="draft">Borrador</option>
-                        <option value="active">Activo</option>
-                        <option value="inactive">Inactivo</option>
-                    </Form.Select>
+                    />
                     </Form.Group>
                 </Col>
                 </Row>
@@ -157,24 +128,36 @@ const ExamsCreate = () => {
                 <Row>
                 <Col md={6}>
                     <Form.Group className="mb-3">
+                    <Form.Label>Estado</Form.Label>
+                    <Form.Select
+                        value={formData.status}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
+                    >
+                        <option value="DRAFT">Borrador</option>
+                        <option value="ACTIVE">Activo</option>
+                        <option value="INACTIVE">Inactivo</option>
+                    </Form.Select>
+                    </Form.Group>
+                </Col>
+
+                <Col md={6}>
+                    <Form.Group className="mb-3">
                     <Form.Label>Duración (minutos)</Form.Label>
                     <Form.Control
                         type="number"
                         min="0"
                         max="300"
-                        value={formData.duration}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, duration: Number.parseInt(e.target.value) }))}
-                        disabled={formData.duration === 0}
+                        value={formData.timeLimit}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, timeLimit: Number.parseInt(e.target.value) }))}
+                        disabled={formData.timeLimit === 0}
+                    />
+                    <Form.Check
+                        type="checkbox"
+                        label="Sin límite de tiempo"
+                        checked={formData.timeLimit === 0}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, timeLimit: e.target.checked ? 0 : 60 }))}
                     />
                     </Form.Group>
-                </Col>
-                <Col md={6} className="d-flex align-items-end">
-                    <Form.Check
-                    type="checkbox"
-                    label="Sin límite de tiempo"
-                    checked={formData.duration === 0}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, duration: e.target.checked ? 0 : 60 }))}
-                    />
                 </Col>
                 </Row>
             </Card.Body>
@@ -189,17 +172,16 @@ const ExamsCreate = () => {
                     <Form.Check
                         key={question.id}
                         type="checkbox"
-                        label={question.question}
+                        label={question.header}
                         checked={selectedQuestions.some((q) => q.id === question.id)}
                         onChange={() => handleQuestionToggle(question)}
-                        disabled={!selectedQuestions.some((q) => q.id === question.id) && selectedQuestions.length >= 5}
                         className="mb-2"
                     />
                     ))}
-                    <Form.Text className="text-muted">{selectedQuestions.length} / 5 preguntas seleccionadas</Form.Text>
+                    <Form.Text className="text-muted">{selectedQuestions.length} preguntas seleccionadas</Form.Text>
                 </>
                 ) : (
-                <p className="text-muted">No hay preguntas disponibles para esta materia</p>
+                <p className="text-muted">No hay preguntas disponibles</p>
                 )}
             </Card.Body>
             </Card>
