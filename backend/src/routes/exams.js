@@ -510,29 +510,21 @@ router.get("/:examId", authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { examId } = req.params;
 
+        // Primero obtener el examen básico
         const exam = await prisma.exam.findUnique({
             where: { id: examId },
-            include: {
-                examQuestions: {
-                    include: {
-                        question: {
-                            include: {
-                                professor: {
-                                    select: {
-                                        name: true,
-                                        subject: true
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    orderBy: {
-                        order: "asc"
-                    }
-                },
+            select: {
+                id: true,
+                title: true,
+                description: true,
+                status: true,
+                timeLimit: true,
+                createdAt: true,
+                updatedAt: true,
                 _count: {
                     select: {
-                        examResults: true
+                        examResults: true,
+                        examQuestions: true
                     }
                 }
             }
@@ -545,7 +537,40 @@ router.get("/:examId", authenticateToken, requireAdmin, async (req, res) => {
             });
         }
 
-        res.json(exam);
+        // Luego obtener las preguntas asociadas desde ExamQuestion
+        const examQuestions = await prisma.examQuestion.findMany({
+            where: { examId },
+            include: {
+                question: {
+                    select: {
+                        id: true,
+                        header: true,
+                        educationalIndicator: true,
+                        isActive: true,
+                        professor: {
+                            select: {
+                                name: true,
+                                subject: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                order: "asc"
+            }
+        });
+
+        // Formatear la respuesta
+        const response = {
+            ...exam,
+            questions: examQuestions.map(eq => ({
+                ...eq.question,
+                order: eq.order // Incluir el orden de la pregunta en el examen
+            }))
+        };
+
+        res.json(response);
     } catch (error) {
         console.error(`Error obteniendo examen con ID ${examId}:`, error);
         res.status(500).json({ 

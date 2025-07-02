@@ -163,26 +163,31 @@ const ExamsView = () => {
                         <Table striped bordered hover responsive>
                             <thead>
                                 <tr>
-                                    <th>#</th>
-                                    <th>Pregunta</th>
-                                    <th>Tipo</th>
-                                    <th>Dificultad</th>
+                                    <th style={{ width: "40%" }}>Pregunta</th>
+                                    <th>Profesor</th>
+                                    <th>Indicador</th>
+                                    <th>Estado</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {exam.questions.map((question, index) => (
                                     <tr key={question.id}>
-                                        <td>{index + 1}</td>
-                                        <td>{question.question}</td>
                                         <td>
-                                            <Badge bg="info">{question.type}</Badge>
+                                            <div className="fw-medium mb-1">{truncateText(question.header, 80)}</div>
+                                            <small className="text-muted">ID: {question.id}</small>
                                         </td>
                                         <td>
-                                            <Badge bg={
-                                                question.difficulty === "easy" ? "success" : 
-                                                question.difficulty === "medium" ? "warning" : "danger"
-                                            }>
-                                                {question.difficulty}
+                                            <div className="fw-medium">{question.professor?.name}</div>
+                                            <small className="text-muted">{question.professor?.subject}</small>
+                                        </td>
+                                        <td>
+                                            <Badge bg="info" className="text-wrap">
+                                                {truncateText(question.educationalIndicator, 30)}
+                                            </Badge>
+                                        </td>
+                                        <td>
+                                            <Badge bg={question.isActive ? "success" : "secondary"}>
+                                                {question.isActive ? "Activa" : "Inactiva"}
                                             </Badge>
                                         </td>
                                     </tr>
