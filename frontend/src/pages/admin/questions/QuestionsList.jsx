@@ -252,7 +252,22 @@ const QuestionsList = () => {
                     </Form.Select>
                 </Form.Group>
                 </Col>
-
+                <Col md={6} lg={3}>
+                    <Form.Group className="mb-3">
+                        <Form.Label>Indicador Educativo</Form.Label>
+                        <Form.Select
+                            value={filters.indicator}
+                            onChange={(e) => handleFilterChange("indicator", e.target.value)}
+                        >
+                            <option value="">Todos los indicadores</option>
+                            {indicators.map((indicator, index) => (
+                                <option key={index} value={indicator}>
+                                    {indicator}
+                                </option>
+                            ))}
+                        </Form.Select>
+                    </Form.Group>
+                </Col>
                 <Col md={6} lg={3}>
                 <Form.Group className="mb-3">
                     <Form.Label>Estado</Form.Label>
