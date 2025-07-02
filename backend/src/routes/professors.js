@@ -29,8 +29,8 @@ router.get("/", authenticateToken, async (req, res) => {
         })
 
         res.json({
-        professors,
-        total: professors.length,
+            professors,
+            total: professors.length,
         })
     } catch (error) {
         console.error("Error obteniendo profesores:", error)
@@ -60,7 +60,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
         })
 
         if(!professor){
-        return res.status(404).json({error:"Profesor no encontrado"})
+            return res.status(404).json({error:"Profesor no encontrado"})
         }
 
         res.json(professor)
@@ -73,7 +73,7 @@ router.get("/:id", authenticateToken, async (req, res) => {
 //Crear nuevo profesor (solo Admin)
 router.post("/", authenticateToken, requireAdmin, async(req, res)=>{
     try{
-        const {name,subject} =req.body
+        const {name,subject, bio, email, phone } =req.body
 
         console.log("Creando profesor", {name,subject})
 
@@ -104,6 +104,10 @@ router.post("/", authenticateToken, requireAdmin, async(req, res)=>{
             data:{
                 name: name.trim(),
                 subject: subject.trim(),
+                bio: bio?.trim(),
+                email: email?.trim(),
+                phone: phone?.trim(),
+                status: "ACTIVE"
             },
         })
         console.log("Profesor creado:", { id: professor.id, name: professor.name, subject: professor.subject })
@@ -119,7 +123,7 @@ router.post("/", authenticateToken, requireAdmin, async(req, res)=>{
 router.put("/:id", authenticateToken, requireAdmin, async(req, res)=>{
     try{
         const {id} = req.params
-        const {name, subject} = req.body
+        const {name,subject, bio, email, phone } = req.body
 
         console.log("Actualizando profesor:", {id, name, subject})
 
@@ -146,7 +150,11 @@ router.put("/:id", authenticateToken, requireAdmin, async(req, res)=>{
             where: {id},
             data:{
                 name: name.trim(),
-                subject: subject.trim()
+                subject: subject.trim(),
+                bio: bio?.trim(),
+                email: email?.trim(),
+                phone: phone?.trim(),
+                status: existingProfessor.status
             },
             include:{
                 _count:{
