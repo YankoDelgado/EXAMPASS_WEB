@@ -109,7 +109,7 @@ export const examService = {
     // Crear examen (admin)
     createExam: async (examData) => {
         try {
-            const response = await API.post("/exams", examData)
+            const response = await API.post("/exams/generate", examData)
             return response.data
         } catch (error) {
             console.error("Error creando examen:", error)

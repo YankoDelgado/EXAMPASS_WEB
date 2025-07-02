@@ -57,13 +57,37 @@ router.get("/", authenticateToken, requireAdmin, async (req, res) => {
 //Generar nuevo examen (solo admins)
 router.post("/generate", authenticateToken, requireAdmin, async (req, res) => {
     try {
-        const { title = "Examen de Conocimientos", description, totalQuestions = 5 } = req.body
+        const { 
+            title, 
+            description, 
+            questionIds, 
+            status,
+            timeLimit = null
+        } = req.body;
 
-        console.log("Generando nuevo examen:", { title, totalQuestions })
+        // Validaciones básicas
+        if (!title || !title.trim()) {
+            return res.status(400).json({ error: "El título del examen es requerido" });
+        }
 
-        //Obtener preguntas activas aleatorias
-        const availableQuestions = await prisma.question.findMany({
+        if (!questionIds || !Array.isArray(questionIds) || questionIds.length === 0) {
+            return res.status(400).json({ error: "Debe seleccionar al menos una pregunta" });
+        }
+
+        if (questionIds.length > 10) {
+            return res.status(400).json({ error: "El número máximo de preguntas permitidas es 10" });
+        }
+
+        console.log("Creando nuevo examen manual:", { 
+            title, 
+            questionCount: questionIds.length,
+            status
+        });
+
+        // Verificar que todas las preguntas existan y estén activas
+        const questions = await prisma.question.findMany({
             where: {
+                id: { in: questionIds },
                 isActive: true
             },
             include: {
@@ -74,46 +98,57 @@ router.post("/generate", authenticateToken, requireAdmin, async (req, res) => {
                     }
                 }
             }
-        })
+        });
 
-        if(availableQuestions.length < totalQuestions) {
+        if (questions.length !== questionIds.length) {
+            const invalidIds = questionIds.filter(id => 
+                !questions.some(q => q.id === id));
+            
             return res.status(400).json({
-                error: `No hay suficientes preguntas activas. Se necesitan ${totalQuestions}, disponibles: ${availableQuestions.length}`,
-            })
+                error: "Algunas preguntas no existen o no están activas",
+                details: {
+                    requested: questionIds.length,
+                    found: questions.length,
+                    invalidIds
+                }
+            });
         }
 
-        //Seleccionar preguntas aleatorias
-        const shuffled = availableQuestions.sort(() => 0.5 - Math.random())
-        const selectedQuestions = shuffled.slice(0, totalQuestions)
-
-        //Crear examen
+        // Crear el examen en la base de datos
         const exam = await prisma.exam.create({
             data: {
-                title,
-                description,
-                totalQuestions,
-                status: "ACTIVE" //Por Default
+                title: title.trim(),
+                description: description?.trim(),
+                totalQuestions: questionIds.length,
+                status,
+                timeLimit: timeLimit === 0 ? null : timeLimit // Guardar null si no hay tiempo límite
             }
-        })
+        });
 
-        //Crear relaciones pregunta-examen
+        // Crear las relaciones entre el examen y las preguntas
         const examQuestions = await Promise.all(
-            selectedQuestions.map((question, index) =>
+            questionIds.map((questionId, index) => 
                 prisma.examQuestion.create({
                     data: {
                         examId: exam.id,
-                        questionId: question.id,
-                        order: index + 1,
+                        questionId,
+                        order: index + 1 
                     }
                 })
             )
-        )
+        );
 
-        console.log("Examen generado:", {id: exam.id, title: exam.title, questions: examQuestions.length})
+        console.log("Examen creado exitosamente:", {
+            examId: exam.id,
+            title: exam.title,
+            questionCount: examQuestions.length,
+            status: exam.status,
+            timeLimit: exam.timeLimit
+        });
 
-        //Obtener examen completo
+        // Obtener el examen completo con sus preguntas para la respuesta
         const fullExam = await prisma.exam.findUnique({
-            where: {id: exam.id},
+            where: { id: exam.id },
             include: {
                 examQuestions: {
                     include: {
@@ -128,22 +163,28 @@ router.post("/generate", authenticateToken, requireAdmin, async (req, res) => {
                             }
                         }
                     },
-                    orderBy: {
-                        order: "asc"
-                    }
+                    orderBy: { order: "asc" }
                 }
             }
-        })
+        });
 
-        res.status(201).json({message: "Examen generado exitosamente", exam: fullExam})
+        res.status(201).json({
+            success: true,
+            message: "Examen creado exitosamente",
+            exam: fullExam
+        });
+
     } catch (error) {
-        console.error("Error generando examen:", error)
+        console.error("Error al crear examen manual:", error);
         res.status(500).json({
             error: "Error interno del servidor",
-            details: process.env.NODE_ENV === "development" ? error.message : undefined
-        })
+            details: process.env.NODE_ENV === "development" ? {
+                message: error.message,
+                stack: error.stack
+            } : undefined
+        });
     }
-})
+});
 
 //Obtener examen disponible para estudiante
 router.get("/available", authenticateToken, requireStudent, async (req, res) => {
