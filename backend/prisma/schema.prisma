@@ -48,6 +48,8 @@ model StudentProfile {
 model Professor {
   id       String @id @default(cuid())
   name     String
+  email    String @unique
+  phone    String?
   subject  String                       // Asignatura
   
   // RELACIONES
