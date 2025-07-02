@@ -505,4 +505,54 @@ router.get("/my-results", authenticateToken, requireStudent, async (req, res) =>
     }
 })
 
+// Obtener examen específico por ID (admin)
+router.get("/:examId", authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { examId } = req.params;
+
+        const exam = await prisma.exam.findUnique({
+            where: { id: examId },
+            include: {
+                examQuestions: {
+                    include: {
+                        question: {
+                            include: {
+                                professor: {
+                                    select: {
+                                        name: true,
+                                        subject: true
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    orderBy: {
+                        order: "asc"
+                    }
+                },
+                _count: {
+                    select: {
+                        examResults: true
+                    }
+                }
+            }
+        });
+
+        if (!exam) {
+            return res.status(404).json({ 
+                error: "Examen no encontrado",
+                details: `No se encontró examen con ID: ${examId}`
+            });
+        }
+
+        res.json(exam);
+    } catch (error) {
+        console.error(`Error obteniendo examen con ID ${examId}:`, error);
+        res.status(500).json({ 
+            error: "Error interno del servidor",
+            details: process.env.NODE_ENV === "development" ? error.message : undefined
+        });
+    }
+});
+
 export default router
