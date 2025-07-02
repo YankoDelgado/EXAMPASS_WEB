@@ -372,13 +372,13 @@ const ExamsList = () => {
                                                             <i className="bi bi-eye"></i>
                                                         </Button>
                                                         <Button
-                                                            variant="outline-warning"
+                                                            variant="outline-info"
                                                             size="sm"
-                                                            onClick={() => navigate(`/admin/exams/edit/${exam.id}`)}
-                                                            title="Editar"
-                                                        >
-                                                            <i className="bi bi-pencil"></i>
-                                                        </Button>
+                                                            onClick={() => navigate(`/admin/exams/${exam.id}/results`)}
+                                                            title="Ver Resultados"
+                                                            >
+                                                            <i className="bi bi-bar-chart-line"></i>
+                                                            </Button>
                                                         <Button
                                                             variant="outline-danger"
                                                             size="sm"
