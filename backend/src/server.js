@@ -19,10 +19,21 @@ app.use(
     cors({
         origin: [process.env.VITE_API_URL, "http://localhost:5173"],
         credentials: true,
-        methods: ["GET", "POST", "PUT", "DELETE","OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+        methods: ["GET", "POST", "PUT", "DELETE","OPTIONS", "PATCH"],
+        allowedHeaders: [
+            "Content-Type",
+            "Authorization",
+            "X-Requested-With",
+            "Accept",
+            "Cache-Control"
+        ],
+        optionsSuccessStatus: 204,
+        maxAge: 86400,
     }),
 )
+app.use(cors(corsOptions));
+app.options('*', cors());
+
 app.use(express.json())
 
 //Middleware de logging
@@ -30,6 +41,12 @@ app.use((req, res, next)=>{
     console.log(`${req.method} ${req.path} - ${new Date().toISOString()}`)
     next()
 })
+
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", req.headers.origin || corsOptions.origin[0]);
+    res.header("Access-Control-Allow-Credentials", "true");
+    next();
+});
 
 // Rutas principales
 app.get("/", (req, res)=>{

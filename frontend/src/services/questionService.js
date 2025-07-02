@@ -39,7 +39,7 @@ export const questionService = {
                     
                 },
                 headers: { 
-                    'Cache-Control': 'no-cache' 
+                    'Accept': 'application/json',
                 },
                 validateStatus: (status) => status < 500
             });

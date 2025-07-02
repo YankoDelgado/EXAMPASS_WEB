@@ -33,7 +33,7 @@ const QuestionsView = () => {
 
             const result = await questionService.getById(id);
             
-            if (!result?.question) {
+            if (!result || !result.question) {
                 throw new Error("La pregunta no pudo ser cargada");
             }
 
