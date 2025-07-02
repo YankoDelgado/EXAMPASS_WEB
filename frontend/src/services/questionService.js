@@ -16,7 +16,7 @@ export const questionService = {
             queryParams.append("limit", params.limit||10)
 
             const url = queryParams.toString() ? `/questions?${queryParams}` : "/questions"
-            a
+
             const response = await API.get(url)
             return response.data
         } catch (error) {
