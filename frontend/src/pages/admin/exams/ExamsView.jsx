@@ -55,6 +55,11 @@ const ExamsView = () => {
         return <Badge bg={variant}>{text}</Badge>
     }
 
+    const truncateText = (text, maxLength = 100) => {
+        if (!text) return ""
+        return text.length > maxLength ? text.substring(0, maxLength) + "..." : text
+    }
+
     if (loading) {
         return (
             <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
