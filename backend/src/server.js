@@ -31,7 +31,7 @@ app.use(
         maxAge: 86400,
     }),
 )
-app.use(cors(corsOptions));
+app.use(cors());
 app.options('*', cors());
 
 app.use(express.json())
