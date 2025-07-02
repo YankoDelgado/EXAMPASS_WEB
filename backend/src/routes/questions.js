@@ -332,4 +332,37 @@ router.patch("/:id/toggle", authenticateToken, requireAdmin, async (req, res) =>
     }
 })
 
+// Obtener indicadores educativos únicos
+router.get("/indicators", authenticateToken, async (req, res) => {
+    try {
+        // Usamos Prisma para obtener valores distintos
+        const indicators = await prisma.question.findMany({
+            where: {
+                educationalIndicator: { not: null } // Solo indicadores no nulos
+            },
+            distinct: ['educationalIndicator'],
+            select: {
+                educationalIndicator: true
+            },
+            orderBy: {
+                educationalIndicator: 'asc' // Orden alfabético
+            }
+        });
+
+        // Extraemos solo los valores de los indicadores
+        const indicatorValues = indicators.map(item => item.educationalIndicator);
+
+        res.json({
+            success: true,
+            indicators: indicatorValues
+        });
+    } catch (error) {
+        console.error("Error obteniendo indicadores:", error);
+        res.status(500).json({ 
+            success: false,
+            error: "Error al obtener los indicadores educativos" 
+        });
+    }
+});
+
 export default router
