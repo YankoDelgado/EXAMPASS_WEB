@@ -28,32 +28,48 @@ export const questionService = {
     // Obtener pregunta por ID
     getById: async (id) => {
         try {
+            if (!id) {
+                throw new Error("ID de pregunta no proporcionado");
+            }
+
             const response = await API.get(`/questions/${id}`, {
                 params: {
-                    includeStats: true 
-                }
+                    includeStats: true,
+                    _: Date.now(),
+                    
+                },
+                headers: { 
+                    'Cache-Control': 'no-cache' 
+                },
+                validateStatus: (status) => status < 500
             });
 
             if (!response.data) {
-            throw new Error("La respuesta del servidor no contiene datos");
-        }
-        
-        // Asegurar que la pregunta existe en la respuesta
-        if (!response.data.question) {
-            throw new Error("Pregunta no encontrada en la respuesta");
-        }
-        
-        return {
-            question: response.data.question,
-            stats: response.data.stats || {
-                timesUsed: 0,
-                correctRate: 0,
-                lastUsed: null
+                console.error("Respuesta vacía del servidor:", response);
+                throw new Error("El servidor no devolvió datos");
             }
-        };
+
+            const { question, stats } = response.data;
+
+            if (!question) {
+                throw new Error("La estructura de la respuesta es inválida");
+            }
+
+            return {
+                question,
+                stats: stats || {
+                    timesUsed: 0,
+                    correctRate: 0,
+                    lastUsed: null
+                }
+            };
         } catch (error) {
-            console.error("Error obteniendo pregunta:", error)
-            throw error
+            console.error("Error en getById:", {
+                id,
+                error: error.response?.data || error.message
+            });
+            
+            throw new Error(error.response?.data?.error || "Error cargando los detalles de la pregunta");
         }
     },
 

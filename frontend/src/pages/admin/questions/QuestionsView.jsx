@@ -23,29 +23,41 @@ const QuestionsView = () => {
 
     const loadQuestion = async () => {
         try {
+            setQuestion(null);
             setLoading(true)
             setError("")
-            setQuestion(null)
+
+            if (!id || typeof id !== 'string') {
+                throw new Error("Identificador de pregunta inválido");
+            }
 
             if (!data || !data.question) {
                 throw new Error("La respuesta no contiene datos válidos");
             }
 
-            setQuestion(data.question);
+            const result = await questionService.getById(id);
             
-            // Manejar estadísticas
-            setStats({
-                timesUsed: data.stats?.timesUsed || 0,
-                correctRate: data.stats?.correctRate || 0,
-                lastUsed: data.stats?.lastUsed || null
+            if (!result?.question) {
+                throw new Error("La pregunta no pudo ser cargada");
+            }
+
+            setQuestion(result.question);
+            setStats(result.stats || {
+                timesUsed: 0,
+                correctRate: 0,
+                lastUsed: null
             });
         } catch (error) {
-            console.error("Error cargando pregunta:", error)
-            if (error.response?.status === 404) {
-                setError("Pregunta no encontrada")
-            } else {
-                setError("Error cargando datos de la pregunta")
-            }
+            console.error("Error en loadQuestion:", {
+                id,
+                error: error.message,
+                stack: error.stack
+            });
+            const errorMessage = error.message.includes("no encontrada") 
+                ? `Pregunta con ID ${id} no encontrada`
+                : "Error cargando los detalles de la pregunta";
+        
+            setError(errorMessage);
         } finally {
             setLoading(false)
         }
