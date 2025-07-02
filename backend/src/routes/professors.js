@@ -63,7 +63,10 @@ router.get("/:id", authenticateToken, async (req, res) => {
             return res.status(404).json({error:"Profesor no encontrado"})
         }
 
-        res.json({professor})
+        res.json({professor: {
+            ...professor,
+            isActive: professor.status === "ACTIVE"
+        }})
     } catch (error) {
         console.error("Error obteniendo profesor:", error)
         res.status(500).json({error: "Error interno del servidor"})
