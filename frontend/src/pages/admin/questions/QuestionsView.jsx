@@ -31,10 +31,6 @@ const QuestionsView = () => {
                 throw new Error("Identificador de pregunta inválido");
             }
 
-            if (!data || !data.question) {
-                throw new Error("La respuesta no contiene datos válidos");
-            }
-
             const result = await questionService.getById(id);
             
             if (!result?.question) {
