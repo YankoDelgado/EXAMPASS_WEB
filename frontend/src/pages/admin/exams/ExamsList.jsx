@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { Container, Card, Table, Button, Form, Row, Col, Badge, Spinner, Alert, Modal, InputGroup, Pagination } from "react-bootstrap"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { examService } from "../../../services/examService"
-import { questionService } from "../../../services/questionService"
+import { professorService } from "../../../services/professorService"
 
 const ExamsList = () => {
     const navigate = useNavigate()
@@ -54,7 +54,7 @@ const ExamsList = () => {
 
     const loadSubjects = async () => {
         try {
-            const data = await questionService.getSubjects()
+            const data = await professorService.getSubjects()
             setSubjects(data.subjects || [])
         } catch (error) {
             console.error("Error cargando materias:", error)

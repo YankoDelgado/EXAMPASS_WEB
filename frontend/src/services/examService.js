@@ -98,7 +98,7 @@ export const examService = {
     getAllExams: async (filters = {}) => {
         try {
             const params = new URLSearchParams(filters)
-            const response = await API.get(`/admin/exams?${params}`)
+            const response = await API.get(`/exams?${params}`)
             return response.data
         } catch (error) {
             console.error("Error obteniendo todos los exámenes:", error)
@@ -109,7 +109,7 @@ export const examService = {
     // Crear examen (admin)
     createExam: async (examData) => {
         try {
-            const response = await API.post("/admin/exams", examData)
+            const response = await API.post("/exams", examData)
             return response.data
         } catch (error) {
             console.error("Error creando examen:", error)
@@ -120,7 +120,7 @@ export const examService = {
     // Obtener examen específico (admin)
     getExamById: async (examId) => {
         try {
-            const response = await API.get(`/admin/exams/${examId}`)
+            const response = await API.get(`/exams/${examId}`)
             return response.data
         } catch (error) {
             console.error("Error obteniendo examen:", error)
@@ -131,7 +131,7 @@ export const examService = {
     // Actualizar examen (admin)
     updateExam: async (examId, examData) => {
         try {
-            const response = await API.put(`/admin/exams/${examId}`, examData)
+            const response = await API.put(`/exams/${examId}`, examData)
             return response.data
         } catch (error) {
             console.error("Error actualizando examen:", error)
@@ -142,7 +142,7 @@ export const examService = {
     // Eliminar examen (admin)
     deleteExam: async (examId) => {
         try {
-            const response = await API.delete(`/admin/exams/${examId}`)
+            const response = await API.delete(`/exams/${examId}`)
             return response.data
         } catch (error) {
             console.error("Error eliminando examen:", error)
@@ -153,7 +153,7 @@ export const examService = {
     // Obtener estadísticas del examen (admin)
     getExamStats: async (examId) => {
         try {
-            const response = await API.get(`/admin/exams/${examId}/stats`)
+            const response = await API.get(`/exams/${examId}/stats`)
             return response.data
         } catch (error) {
             console.error("Error obteniendo estadísticas del examen:", error)
@@ -164,7 +164,7 @@ export const examService = {
     // Activar/Desactivar examen (admin)
     toggleExamStatus: async (examId) => {
         try {
-            const response = await API.patch(`/admin/exams/${examId}/toggle-status`)
+            const response = await API.patch(`/exams/${examId}/toggle-status`)
             return response.data
         } catch (error) {
             console.error("Error cambiando estado del examen:", error)
@@ -175,7 +175,7 @@ export const examService = {
     // Duplicar examen (admin)
     duplicateExam: async (examId) => {
         try {
-            const response = await API.post(`/admin/exams/${examId}/duplicate`)
+            const response = await API.post(`/exams/${examId}/duplicate`)
             return response.data
         } catch (error) {
             console.error("Error duplicando examen:", error)
@@ -187,7 +187,7 @@ export const examService = {
     getExamResults: async (examId, filters = {}) => {
         try {
             const params = new URLSearchParams(filters)
-            const response = await API.get(`/admin/exams/${examId}/results?${params}`)
+            const response = await API.get(`/exams/${examId}/results?${params}`)
             return response.data
         } catch (error) {
             console.error("Error obteniendo resultados del examen:", error)
