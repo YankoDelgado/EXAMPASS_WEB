@@ -2,7 +2,8 @@ import { useState, useEffect } from "react"
 import { Card, Row, Col, Button, Alert, Badge, Spinner } from "react-bootstrap"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
-import { studentService } from "../../services/studentService"
+import { examService } from "../../services/examService"
+import {studentService} from "../../services/studentServices"
 
 const StudentDashboard = () => {
     const {user} = useAuth()
@@ -19,15 +20,15 @@ const StudentDashboard = () => {
             setError("");
             
             const [availableExamsResponse, myReports, lastResult] = await Promise.all([
-                studentService.getAvailableExams(true),
+                examService.getAvailableExams(true),
                 studentService.getMyReports().catch(e => ({ reports: [], error: e.message })),
                 studentService.getLastResult().catch(() => null)
             ]);
 
             // Verificar si hay error en availableExams
             const availableExams = availableExamsResponse.success 
-                ? availableExamsResponse
-                : { exams: [], error: availableExamsResponse.error };
+                ? { exams: availableExamsResponse.exams, message: availableExamsResponse.message }
+                : { exams: [], error: availableExamsResponse.error }
 
             setDashboardData({
                 availableExams,
@@ -35,8 +36,8 @@ const StudentDashboard = () => {
                 lastResult
             });
 
-            if (availableExams.error || myReports.error) {
-                setError(availableExams.error || myReports.error);
+            if (!availableExamsResponse.success || myReports.error) {
+                setError(availableExamsResponse.error || myReports.error || "Error cargando datos");
             }
         } catch (error) {
             setError("Error cargando datos del dashboard")

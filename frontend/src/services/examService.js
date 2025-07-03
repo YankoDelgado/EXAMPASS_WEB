@@ -2,13 +2,33 @@ import API from "../config/axios"
 
 export const examService = {
     // Obtener exámenes disponibles para el estudiante
-    getAvailableExams: async () => {
+    getAvailableExams: async (single = false) => {
         try {
-            const response = await API.get("/exams/available")
-            return response.data
+            const response = await API.get("/exams/available", {
+                params: {single: single}
+            })
+            if (!response.data.success) {
+                return {
+                    success: false,
+                    exams: [],
+                    error: response.data.error || "Error al obtener exámenes",
+                    message: response.data.message
+                };
+            }
+            return {
+                success: true,
+                exams: response.data.data || [],
+                message: response.data.message,
+                error: null
+            };
         } catch (error) {
             console.error("Error obteniendo exámenes disponibles:", error)
-            throw error
+            return {
+                success: false,
+                exams: [],
+                error: error.response?.data?.error || "Error de conexión",
+                message: error.response?.data?.message || "No se pudo conectar al servidor"
+            };
         }
     },
 

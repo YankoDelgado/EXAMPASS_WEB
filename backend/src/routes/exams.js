@@ -173,7 +173,8 @@ router.post("/generate", authenticateToken, requireAdmin, async (req, res) => {
 //Obtener examen disponible para estudiante
 router.get("/available", authenticateToken, requireStudent, async (req, res) => {
     try {
-        const {single} = req.query
+        const single = req.query.single === "true"
+
         const baseWhere = {
             status: "ACTIVE",
                 examResults: {
@@ -209,23 +210,16 @@ router.get("/available", authenticateToken, requireStudent, async (req, res) => 
                     }
                 }
         }
-        if (single === true){
+        if (single){
             const availableExam = await prisma.exam.findFirst({
                 where: baseWhere,
-                include: baseInclude
+                include: baseInclude,
+                orderBy: { id: "asc" }
             })
-
-            if(!availableExam) {
-                return res.status(200).json({ 
-                    success: true,
-                    data: [], 
-                    message: "No hay exámenes disponibles o ya has completado todos los exámenes"
-                })
-            }
 
             res.json({
             success: true,
-            data: [availableExam],
+            data: availableExam ? [availableExam] : [],
             message: "Examen disponible encontrado"
         })
         }
@@ -235,17 +229,9 @@ router.get("/available", authenticateToken, requireStudent, async (req, res) => 
             include: baseInclude
         });
 
-        if(!availableExam) {
-            return res.status(200).json({ 
-                success: true,
-                data: [], 
-                message: "No hay exámenes disponibles o ya has completado todos los exámenes"
-            })
-        }
-
         res.json({
             success: true,
-            data: [availableExam],
+            data: availableExam,
             message: "Examens disponibles encontrados"
         })
     } catch (error) {
