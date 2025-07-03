@@ -173,18 +173,18 @@ router.post("/generate", authenticateToken, requireAdmin, async (req, res) => {
 //Obtener examen disponible para estudiante
 router.get("/available", authenticateToken, requireStudent, async (req, res) => {
     try {
-        const availableExam = await prisma.exam.findFirst({
-            where: {
-                status: "ACTIVE",
+        const {single} = req.query
+        const baseWhere = {
+            status: "ACTIVE",
                 examResults: {
                     none: {
                         userId: req.user.id,
                         status: "COMPLETED"
                     }
                 }
-            },
-            include: {
-                examQuestions: {
+        }
+        const baseInclude = {
+            examQuestions: {
                     include: {
                         question: {
                             select: {
@@ -208,7 +208,31 @@ router.get("/available", authenticateToken, requireStudent, async (req, res) => 
                         examQuestions: true
                     }
                 }
+        }
+        if (single === true){
+            const availableExam = await prisma.exam.findFirst({
+                where: baseWhere,
+                include: baseInclude
+            })
+
+            if(!availableExam) {
+                return res.status(200).json({ 
+                    success: true,
+                    data: [], 
+                    message: "No hay exámenes disponibles o ya has completado todos los exámenes"
+                })
             }
+
+            res.json({
+            success: true,
+            data: [availableExam],
+            message: "Examen disponible encontrado"
+        })
+        }
+
+        const availableExam = await prisma.exam.findMany({
+            where: baseWhere,
+            include: baseInclude
         });
 
         if(!availableExam) {
@@ -222,7 +246,7 @@ router.get("/available", authenticateToken, requireStudent, async (req, res) => 
         res.json({
             success: true,
             data: [availableExam],
-            message: "Examen disponible encontrado"
+            message: "Examens disponibles encontrados"
         })
     } catch (error) {
         console.error("Error obteniendo examen disponible:", error)

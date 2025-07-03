@@ -13,9 +13,11 @@ export const studentService = {
     },
 
     // Obtener exámenes disponibles
-    getAvailableExams: async () => {
+    getAvailableExams: async (single = false) => {
         try {
-            const response = await API.get("/exams/available")
+            const response = await API.get("/exams/available", {
+                params: {single:single}
+            })
             if (!response.data.success) {
                 return {
                     success: false,

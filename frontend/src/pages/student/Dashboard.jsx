@@ -19,7 +19,7 @@ const StudentDashboard = () => {
             setError("");
             
             const [availableExamsResponse, myReports, lastResult] = await Promise.all([
-                studentService.getAvailableExams(),
+                studentService.getAvailableExams(true),
                 studentService.getMyReports().catch(e => ({ reports: [], error: e.message })),
                 studentService.getLastResult().catch(() => null)
             ]);
