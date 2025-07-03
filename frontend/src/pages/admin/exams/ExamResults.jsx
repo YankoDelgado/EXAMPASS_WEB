@@ -65,7 +65,7 @@ const ExamsResults = () => {
       console.error("Error cargando estadísticas:", err);
     }
   };
-
+  /*
   const handleExport = async (format) => {
     try {
       const blob = await examService.exportExamResults(id, format);
@@ -82,7 +82,7 @@ const ExamsResults = () => {
       console.error(err);
     }
   };
-
+  */
   const handlePageChange = (page) => {
     setFilters((prev) => ({ ...prev, page }));
   };
@@ -151,6 +151,7 @@ const ExamsResults = () => {
           <h1 className="mb-1">Resultados: {exam?.title}</h1>
           <p className="text-muted">Análisis detallado de resultados y estadísticas</p>
         </div>
+        {/*
         <ButtonGroup>
           <Button variant="success" onClick={() => handleExport("csv")}>
             <i className="bi bi-file-earmark-excel me-2"></i>Exportar CSV
@@ -159,6 +160,7 @@ const ExamsResults = () => {
             <i className="bi bi-file-earmark-pdf me-2"></i>Exportar PDF
           </Button>
         </ButtonGroup>
+        */}
       </div>
 
       {/* Error Alert */}
@@ -174,24 +176,28 @@ const ExamsResults = () => {
         <Card className="mb-4">
           <Card.Body>
             <div className="row">
+              {/*
               <div className="col-md-3">
                 <div className="mb-3">
                   <strong className="text-muted d-block">Materia</strong>
                   <span>{exam.subject || "No especificado"}</span>
                 </div>
               </div>
+              */}
               <div className="col-md-3">
                 <div className="mb-3">
                   <strong className="text-muted d-block">Duración</strong>
                   <span>{exam.duration ? `${exam.duration} minutos` : "Sin límite"}</span>
                 </div>
               </div>
+              {/*
               <div className="col-md-3">
                 <div className="mb-3">
                   <strong className="text-muted d-block">Puntaje Mínimo</strong>
                   <span>{exam.passingScore || 70}%</span>
                 </div>
               </div>
+              */}
               <div className="col-md-3">
                 <div className="mb-3">
                   <strong className="text-muted d-block">Preguntas</strong>
@@ -220,6 +226,7 @@ const ExamsResults = () => {
           <Card className="mb-4">
             <Card.Body>
               <div className="row">
+                {/*
                 <div className="col-md-4">
                   <Form.Group controlId="statusFilter">
                     <Form.Label>Estado</Form.Label>
@@ -234,6 +241,7 @@ const ExamsResults = () => {
                     </Form.Select>
                   </Form.Group>
                 </div>
+                */}
                 <div className="col-md-4">
                   <Form.Group controlId="limitFilter">
                     <Form.Label>Por página</Form.Label>
