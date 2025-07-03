@@ -47,6 +47,30 @@ const StudentDashboard = () => {
         }
     }
 
+    const handleStartExam = async (exam) => {
+        try {
+            setStartingExam(exam.id)
+            setError("")
+
+            const result = await examService.startExam(exam.id)
+
+            // Redirigir al examen
+            navigate(`/student/exam/${exam.id}`, {
+                state: { examSession: result.session },
+            })
+        } catch (error) {
+            console.error("Error iniciando examen:", error)
+            if (error.response?.status === 409) {
+                setError("Ya tienes un examen en progreso. Complétalo antes de iniciar otro.")
+            } else {
+                setError("Error iniciando examen. Intenta nuevamente.")
+            }
+        } finally {
+            setStartingExam(null)
+            setConfirmModal({ show: false, exam: null })
+        }
+    }
+
     const getGreeting = () => {
         const hour = new Date().getHours()
         if (hour < 12) return "Buenos días"
