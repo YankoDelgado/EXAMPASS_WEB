@@ -72,22 +72,6 @@ const ExamAvailable = () => {
         return `${hours}h ${mins > 0 ? `${mins}m` : ""}`
     }
 
-    const getDifficultyColor = (difficulty) => {
-        switch (difficulty?.toLowerCase()) {
-            case "fácil":
-            case "easy":
-                return "success"
-            case "medio":
-            case "medium":
-                return "warning"
-            case "difícil":
-            case "hard":
-                return "danger"
-            default:
-                return "secondary"
-        }
-    }
-
     if (loading) {
         return (
             <Container>
@@ -150,12 +134,8 @@ const ExamAvailable = () => {
                             <small className="text-muted d-block">Duración:</small>
                             <strong className="text-primary">
                             <i className="bi bi-clock me-1"></i>
-                            {formatDuration(exam.timeLimit)}
+                            {exam.timeLimit ? `${exam.timeLimit} minutos` : "Sin tiempo límite"}
                             </strong>
-                        </Col>
-                        <Col sm={6}>
-                            <small className="text-muted d-block">Dificultad:</small>
-                            <Badge bg={getDifficultyColor(exam.difficulty)}>{exam.difficulty || "Estándar"}</Badge>
                         </Col>
                         </Row>
                     </div>
@@ -166,21 +146,8 @@ const ExamAvailable = () => {
                             <small className="text-muted d-block">Preguntas:</small>
                             <strong>{exam.totalQuestions}</strong>
                         </Col>
-                        <Col sm={6}>
-                            <small className="text-muted d-block">Puntaje mínimo:</small>
-                            <strong>{exam.passingScore || 60}%</strong>
-                        </Col>
                         </Row>
                     </div>
-
-                    {exam.instructions && (
-                        <div className="mb-3">
-                        <small className="text-muted d-block">Instrucciones:</small>
-                        <div className="bg-light p-2 rounded">
-                            <small>{exam.instructions}</small>
-                        </div>
-                        </div>
-                    )}
 
                     <div className="mt-auto">
                         <Alert variant="info" className="mb-3">
@@ -213,13 +180,6 @@ const ExamAvailable = () => {
                         </div>
                     </div>
                     </Card.Body>
-                    <Card.Footer className="text-muted">
-                    <small>
-                        <i className="bi bi-calendar me-1"></i>
-                        Disponible hasta:{" "}
-                        {new Date(exam.availableUntil || Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
-                    </small>
-                    </Card.Footer>
                 </Card>
                 </Col>
             ))}
@@ -243,9 +203,16 @@ const ExamAvailable = () => {
                     Antes de comenzar, ten en cuenta:
                     </h6>
                     <ul className="mb-0">
-                    <li>
-                        Tienes <strong>{formatDuration(confirmModal.exam.timeLimit)}</strong> para completar el examen
-                    </li>
+                    if (exam.timeLimit){
+                        <li>
+                            Tienes <strong>{formatDuration(confirmModal.exam.timeLimit)}</strong> para completar el examen
+                        </li>
+                    } else {
+                        <li>
+                            Sin tiermpo límite
+                        </li>
+                    }
+                    
                     <li>
                         El examen contiene <strong>{confirmModal.exam.totalQuestions} preguntas</strong>
                     </li>
