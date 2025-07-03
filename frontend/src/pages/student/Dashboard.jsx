@@ -19,16 +19,20 @@ const StudentDashboard = () => {
 
             // Cargar datos en paralelo
             const [availableExams, myReports, lastResult] = await Promise.allSettled([
-                studentService.getAvailableExams(),
-                studentService.getMyReports(),
-                studentService.getLastResult(),
+                studentService.getAvailableExams().catch(e => ({ exams: [], error: e.message })),
+                studentService.getMyReports().catch(e => ({ reports: [], error: e.message })),
+                studentService.getLastResult().catch(() => null)
             ])
 
             setDashboardData({
-                availableExams: availableExams.status === "fulfilled" ? availableExams.value : { exams: [] },
-                myReports: myReports.status === "fulfilled" ? myReports.value : { reports: [] },
-                lastResult: lastResult.status === "fulfilled" ? lastResult.value : null,
+                availableExams,
+                myReports,
+                lastResult
             })
+
+            if (availableExams.error || myReports.error) {
+            setError(availableExams.error || myReports.error)
+        }
         } catch (error) {
             setError("Error cargando datos del dashboard")
             console.error("Error:", error)
@@ -126,9 +130,13 @@ const StudentDashboard = () => {
                 </Card.Title>
                 </Card.Header>
                 <Card.Body>
-                {dashboardData?.availableExams?.exams?.length > 0 ? (
+                {dashboardData?.availableExams?.error ? (
+                    <Alert variant="warning">
+                    {dashboardData.availableExams.error}
+                    </Alert>
+                ) : dashboardData?.availableExams?.exams?.length > 0 ? (
                     <div>
-                    {dashboardData.availableExams.exams.slice(0, 1).map((exam) => (
+                    {dashboardData.availableExams.exams.map((exam) => (
                         <div key={exam.id}>
                         <h5 className="text-primary">{exam.title}</h5>
                         <p className="text-muted mb-3">{exam.description}</p>
