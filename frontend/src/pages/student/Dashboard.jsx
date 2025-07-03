@@ -154,12 +154,23 @@ const StudentDashboard = () => {
                         </Col>
                         </Row>
                         <div className="d-grid">
-                        <Button 
-                            variant="primary" 
-                            size="lg" 
-                            onClick={() => navigate(`/student/exam/${exam.id}`)}
+                        <Button
+                            variant="primary"
+                            size="lg"
+                            onClick={() => showConfirmModal(exam)}
+                            disabled={startingExam === exam.id}
                         >
-                            Comenzar Examen
+                            {startingExam === exam.id ? (
+                            <>
+                                <Spinner animation="border" size="sm" className="me-2" />
+                                Iniciando...
+                            </>
+                            ) : (
+                            <>
+                                <i className="bi bi-play-circle me-2"></i>
+                                Comenzar Examen
+                            </>
+                            )}
                         </Button>
                         </div>
                     </div>
@@ -301,6 +312,59 @@ const StudentDashboard = () => {
             </Card>
             </Col>
         </Row>
+        {/* Modal de confirmación */}
+        <Modal show={confirmModal.show} onHide={() => setConfirmModal({ show: false, exam: null })} centered>
+            <Modal.Header closeButton>
+            <Modal.Title>Confirmar Inicio de Examen</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+            {confirmModal.exam && (
+                <div>
+                <h5 className="text-primary">{confirmModal.exam.title}</h5>
+                <p className="text-muted">{confirmModal.exam.description}</p>
+
+                <Alert variant="warning">
+                    <h6>
+                    <i className="bi bi-exclamation-triangle me-2"></i>
+                    Antes de comenzar, ten en cuenta:
+                    </h6>
+                    <ul className="mb-0">
+                    <li>
+                        {exams.timeLimit ? `Tienes ${exams.timeLimit} minutos para completar el examen` : "Sin tiempo límite"}
+                    </li>
+                    <li>
+                        El examen contiene <strong>{confirmModal.exam.totalQuestions} preguntas</strong>
+                    </li>
+                    <li>No podrás pausar el examen una vez iniciado</li>
+                    <li>Asegúrate de tener una conexión estable a internet</li>
+                    <li>Evita cerrar la ventana del navegador</li>
+                    </ul>
+                </Alert>
+
+                <div className="text-center">
+                    <p className="mb-0">
+                    <strong>¿Estás listo para comenzar?</strong>
+                    </p>
+                </div>
+                </div>
+            )}
+            </Modal.Body>
+            <Modal.Footer>
+            <Button variant="secondary" onClick={() => setConfirmModal({ show: false, exam: null })}>
+                Cancelar
+            </Button>
+            <Button variant="success" onClick={() => handleStartExam(confirmModal.exam)} disabled={startingExam !== null}>
+                {startingExam ? (
+                <>
+                    <Spinner animation="border" size="sm" className="me-2" />
+                    Iniciando...
+                </>
+                ) : (
+                "Sí, Comenzar Examen"
+                )}
+            </Button>
+            </Modal.Footer>
+        </Modal>
         </div>
     )
 }
