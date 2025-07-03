@@ -9,23 +9,6 @@ router.get("/", authenticateToken, requireAdmin, async (req, res) => {
     try {
         const exams = await prisma.exam.findMany({
             include: {
-                examQuestions: {
-                    include: {
-                        question: {
-                            include: {
-                                professor: {
-                                    select: {
-                                        name: true,
-                                        subject: true
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    orderBy: {
-                        order: "asc"
-                    }
-                },
                 examResults: {
                     include: {
                         user: {
@@ -38,7 +21,8 @@ router.get("/", authenticateToken, requireAdmin, async (req, res) => {
                 },
                 _count: {
                     select: {
-                        examResults: true
+                        examResults: true,
+                        examQuestions: true,
                     }
                 }
             },

@@ -333,7 +333,6 @@ const ExamsList = () => {
                                     <thead className="table-light">
                                         <tr>
                                             <th style={{ width: "30%" }}>Examen</th>
-                                            <th>Materia</th>
                                             <th>Estado</th>
                                             <th>Preguntas</th>
                                             <th>Duración</th>
@@ -350,12 +349,9 @@ const ExamsList = () => {
                                                         <small className="text-muted">{truncateText(exam.description, 50)}</small>
                                                     )}
                                                 </td>
-                                                <td>
-                                                    <Badge bg="info">{exam.subject}</Badge>
-                                                </td>
                                                 <td>{getStatusBadge(exam.status)}</td>
                                                 <td>
-                                                    <Badge bg="primary">{exam.questionCount || exam.questions?.length || 0}</Badge>
+                                                    <Badge bg="primary">{exam._count?.examQuestion || 0}</Badge>
                                                 </td>
                                                 <td>{exam.timeLimit || "--"} min</td>
                                                 <td>
