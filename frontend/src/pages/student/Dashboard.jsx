@@ -139,41 +139,47 @@ const StudentDashboard = () => {
                 <Card.Body>
                 {dashboardData?.availableExams?.error ? (
                     <Alert variant="warning">
-                    {dashboardData.availableExams.error}
+                        {dashboardData.availableExams.error}
                     </Alert>
                 ) : dashboardData?.availableExams?.exams?.length > 0 ? (
                     <div>
-                    {dashboardData.availableExams.exams.map((exam) => (
-                        <div key={exam.id}>
-                        <h5 className="text-primary">{exam.title}</h5>
-                        <p className="text-muted mb-3">{exam.description}</p>
+                        {dashboardData.availableExams.exams.map((exam) => (
+                            <div key={exam.id}>
+                                <h5 className="text-primary">{exam.title}</h5>
+                                <p className="text-muted mb-3">{exam.description}</p>
 
-                        <Row className="mb-3">
-                            <Col sm={6}>
-                            <small className="text-muted d-block">Preguntas:</small>
-                            <strong>{exam.totalQuestions || 20}</strong>
-                            </Col>
-                            <Col sm={6}>
-                            <small className="text-muted d-block">Tiempo límite:</small>
-                            <strong>{exam.timeLimit || 60} minutos</strong>
-                            </Col>
-                        </Row>
+                                <Row className="mb-3">
+                                    <Col sm={6}>
+                                        <small className="text-muted d-block">Preguntas:</small>
+                                        <strong>{exam._count?.examQuestions || exam.totalQuestions || 20}</strong>
+                                    </Col>
+                                    <Col sm={6}>
+                                        <small className="text-muted d-block">Tiempo límite:</small>
+                                        <strong>{exam.timeLimit || 60} minutos</strong>
+                                    </Col>
+                                </Row>
 
-                        <div className="d-grid">
-                            <Button variant="primary" size="lg" onClick={() => navigate(`/student/exam/${exam.id}`)}>
-                            Comenzar Examen
-                            </Button>
-                        </div>
-                        </div>
-                    ))}
+                                <div className="d-grid">
+                                    <Button 
+                                        variant="primary" 
+                                        size="lg" 
+                                        onClick={() => navigate(`/student/exam/${exam.id}`)}
+                                    >
+                                        Comenzar Examen
+                                    </Button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 ) : (
                     <div className="text-center py-4">
-                    <div className="text-muted mb-3">
-                        <i className="bi bi-clipboard-x display-1"></i>
-                    </div>
-                    <h5>No hay exámenes disponibles</h5>
-                    <p className="text-muted">Vuelve más tarde para ver nuevos exámenes.</p>
+                        <div className="text-muted mb-3">
+                            <i className="bi bi-clipboard-x display-1"></i>
+                        </div>
+                        <h5>No hay exámenes disponibles</h5>
+                        <p className="text-muted">
+                            {dashboardData?.availableExams?.message || "Vuelve más tarde para ver nuevos exámenes."}
+                        </p>
                     </div>
                 )}
                 </Card.Body>

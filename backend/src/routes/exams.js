@@ -179,7 +179,7 @@ router.get("/available", authenticateToken, requireStudent, async (req, res) => 
                 examResults: {
                     none: {
                         userId: req.user.id,
-                        status: "COMPLETED" // Asegurar que solo cuente exámenes completados
+                        status: "COMPLETED"
                     }
                 }
             },
@@ -202,19 +202,24 @@ router.get("/available", authenticateToken, requireStudent, async (req, res) => 
                         }
                     },
                     orderBy: { order: "asc" }
+                },
+                _count: {
+                    select: {
+                        examQuestions: true
+                    }
                 }
             }
-        })
+        });
 
         if(!availableExam) {
             return res.status(200).json({ 
-                exam: null, 
+                exam: [], 
                 message: "No hay exámenes disponibles o ya has completado todos los exámenes"
             })
         }
 
         res.json({
-            exam: availableExam,
+            exam: [availableExam],
             message: "Examen disponible encontrado"
         })
     } catch (error) {
@@ -485,10 +490,11 @@ router.get("/my-results", authenticateToken, requireStudent, async (req, res) =>
             },
             orderBy: {
                 createdAt: "desc"
-            }
+            },
+            take: 1
         })
 
-        res.json({results, total: results.length})
+        res.json({results, total: results.length, lastResult: results[0] || null})
     } catch (error) {
         console.error("Error obteniendo resultados:", error)
         res.status(500).json({error:"Error interno del servidor"})

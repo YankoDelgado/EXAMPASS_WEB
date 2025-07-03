@@ -19,10 +19,18 @@ export const studentService = {
             if (!response.data.exam && response.data.message) {
                 return { exam: null, message: response.data.message };
             }
-            return response.data
+            return {
+                exams: response.data.exam || [],
+                message: response.data.message,
+                error: null
+            }
         } catch (error) {
             console.error("Error obteniendo exámenes disponibles:", error)
-            throw error
+            return {
+                exams: [],
+                error: error.response?.data?.error || "Error al cargar exámenes disponibles",
+                message: error.response?.data?.message
+            };
         }
     },
 
@@ -40,8 +48,8 @@ export const studentService = {
     // Obtener mi último resultado
     getLastResult: async () => {
         try {
-            const response = await API.get("/student/last-result")
-            return response.data
+            const response = await API.get("/exams/my-results")
+            return response.data.lastResult
         } catch (error) {
             console.error("Error obteniendo último resultado:", error)
             return null
