@@ -3,7 +3,7 @@ import { Card, Row, Col, Button, Alert, Badge, Spinner } from "react-bootstrap"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
 import { examService } from "../../services/examService"
-import {studentService} from "../../services/studentServices"
+import { studentService } from "../../services/studentService"
 
 const StudentDashboard = () => {
     const {user} = useAuth()
