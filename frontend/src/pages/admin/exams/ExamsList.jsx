@@ -351,7 +351,7 @@ const ExamsList = () => {
                                                 </td>
                                                 <td>{getStatusBadge(exam.status)}</td>
                                                 <td>
-                                                    <Badge bg="primary">{exam._count?.examQuestion || 0}</Badge>
+                                                    <Badge bg="primary">{exam._count?.examQuestions || 0}</Badge>
                                                 </td>
                                                 <td>{exam.timeLimit || "--"} min</td>
                                                 <td>
