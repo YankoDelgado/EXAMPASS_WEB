@@ -15,31 +15,29 @@ const StudentDashboard = () => {
 
     const loadDashboardData = async () => {
         try {
-            setLoading(true)
-            setError("")
-
-            // Cargar datos en paralelo
-            const [availableExams, myReports, lastResult] = await Promise.all([
-                studentService.getAvailableExams().catch(e => ({ exams: null, error: e.message })),
+            setLoading(true);
+            setError("");
+            
+            const [availableExamsResponse, myReports, lastResult] = await Promise.all([
+                studentService.getAvailableExams(),
                 studentService.getMyReports().catch(e => ({ reports: [], error: e.message })),
                 studentService.getLastResult().catch(() => null)
-            ])
+            ]);
+
+            // Verificar si hay error en availableExams
+            const availableExams = availableExamsResponse.success 
+                ? availableExamsResponse
+                : { exams: [], error: availableExamsResponse.error };
 
             setDashboardData({
-                availableExams: {
-                    exam: availableExams.exam || null,
-                    error: availableExams.error || null
-                },
-                myReports: {
-                    reports: myReports.reports || [],
-                    error: myReports.error || null
-                },
+                availableExams,
+                myReports,
                 lastResult
             });
 
             if (availableExams.error || myReports.error) {
-            setError(availableExams.error || myReports.error)
-        }
+                setError(availableExams.error || myReports.error);
+            }
         } catch (error) {
             setError("Error cargando datos del dashboard")
             console.error("Error:", error)
@@ -138,48 +136,41 @@ const StudentDashboard = () => {
                 </Card.Header>
                 <Card.Body>
                 {dashboardData?.availableExams?.error ? (
-                    <Alert variant="warning">
-                        {dashboardData.availableExams.error}
-                    </Alert>
+                    <Alert variant="warning">{dashboardData.availableExams.error}</Alert>
                 ) : dashboardData?.availableExams?.exams?.length > 0 ? (
-                    <div>
-                        {dashboardData.availableExams.exams.map((exam) => (
-                            <div key={exam.id}>
-                                <h5 className="text-primary">{exam.title}</h5>
-                                <p className="text-muted mb-3">{exam.description}</p>
-
-                                <Row className="mb-3">
-                                    <Col sm={6}>
-                                        <small className="text-muted d-block">Preguntas:</small>
-                                        <strong>{exam._count?.examQuestions || exam.totalQuestions || 20}</strong>
-                                    </Col>
-                                    <Col sm={6}>
-                                        <small className="text-muted d-block">Tiempo límite:</small>
-                                        <strong>{exam.timeLimit || 60} minutos</strong>
-                                    </Col>
-                                </Row>
-
-                                <div className="d-grid">
-                                    <Button 
-                                        variant="primary" 
-                                        size="lg" 
-                                        onClick={() => navigate(`/student/exam/${exam.id}`)}
-                                    >
-                                        Comenzar Examen
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
+                    dashboardData.availableExams.exams.map((exam) => (
+                    <div key={exam.id}>
+                        <h5 className="text-primary">{exam.title}</h5>
+                        <p className="text-muted mb-3">{exam.description}</p>
+                        <Row className="mb-3">
+                        <Col sm={6}>
+                            <small className="text-muted d-block">Preguntas:</small>
+                            <strong>{exam._count?.examQuestions || exam.totalQuestions || 0}</strong>
+                        </Col>
+                        <Col sm={6}>
+                            <small className="text-muted d-block">Tiempo límite:</small>
+                            <strong>{exam.timeLimit || 60} minutos</strong>
+                        </Col>
+                        </Row>
+                        <div className="d-grid">
+                        <Button 
+                            variant="primary" 
+                            size="lg" 
+                            onClick={() => navigate(`/student/exam/${exam.id}`)}
+                        >
+                            Comenzar Examen
+                        </Button>
+                        </div>
                     </div>
+                    ))
                 ) : (
                     <div className="text-center py-4">
-                        <div className="text-muted mb-3">
-                            <i className="bi bi-clipboard-x display-1"></i>
-                        </div>
-                        <h5>No hay exámenes disponibles</h5>
-                        <p className="text-muted">
-                            {dashboardData?.availableExams?.message || "Vuelve más tarde para ver nuevos exámenes."}
-                        </p>
+                    <i className="bi bi-clipboard-x display-1 text-muted"></i>
+                    <h5>No hay exámenes disponibles</h5>
+                    <p className="text-muted">
+                        {dashboardData?.availableExams?.message || 
+                        "Actualmente no hay exámenes disponibles para realizar"}
+                    </p>
                     </div>
                 )}
                 </Card.Body>

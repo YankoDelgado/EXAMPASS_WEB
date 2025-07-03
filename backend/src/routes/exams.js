@@ -213,13 +213,15 @@ router.get("/available", authenticateToken, requireStudent, async (req, res) => 
 
         if(!availableExam) {
             return res.status(200).json({ 
-                exam: [], 
+                success: true,
+                data: [], 
                 message: "No hay exámenes disponibles o ya has completado todos los exámenes"
             })
         }
 
         res.json({
-            exam: [availableExam],
+            success: true,
+            data: [availableExam],
             message: "Examen disponible encontrado"
         })
     } catch (error) {
