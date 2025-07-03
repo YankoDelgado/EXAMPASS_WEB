@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { Container, Card, Button, Alert, Row, Col, ProgressBar, Badge, Modal, Form, Spinner } from "react-bootstrap"
-import { useNavigate, useParams, useLocation } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import { examService } from "../../../services/examService"
 
 const ExamTaking = () => {
@@ -204,7 +204,7 @@ const ExamTaking = () => {
         return (answered / total) * 100;
     }
 
-    const currentQuestion = examSession?.exam?.questions?.[currentQuestionIndex]
+    const currentQuestion = examData?.exam?.questions?.[currentQuestionIndex]
 
     if (loading) {
         return (
@@ -232,7 +232,7 @@ const ExamTaking = () => {
         )
     }
 
-    if (!examSession || !currentQuestion) {
+    if (!examData || !examData.exam?.questions?.[currentQuestionIndex]) {
         return (
             <Container>
                 <Alert variant="warning">
@@ -252,9 +252,9 @@ const ExamTaking = () => {
         <div className="bg-primary text-white p-3 mb-4 sticky-top">
             <Row className="align-items-center">
             <Col md={4}>
-                <h5 className="mb-0">{examSession.exam.title}</h5>
+                <h5 className="mb-0">{examData.exam.title}</h5>
                 <small>
-                Pregunta {currentQuestionIndex + 1} de {examSession.exam.questions.length}
+                Pregunta {currentQuestionIndex + 1} de {examData.exam.questions.length}
                 </small>
             </Col>
             <Col md={4} className="text-center">
@@ -279,9 +279,9 @@ const ExamTaking = () => {
             <Col md={4} className="text-end">
                 <Button variant="warning" onClick={() => setSubmitModal(true)} disabled={submitting}>
                 <i className="bi bi-send me-1"></i>
-                Enviar Examen
+                {submitting ? "Enviando..." : "Enviar Examen"}
                 </Button>
-                {saving && (
+                {submitting && (
                 <div className="mt-1">
                     <small>
                     <Spinner animation="border" size="sm" className="me-1" />
