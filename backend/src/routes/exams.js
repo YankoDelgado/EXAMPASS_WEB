@@ -173,13 +173,13 @@ router.post("/generate", authenticateToken, requireAdmin, async (req, res) => {
 //Obtener examen disponible para estudiante
 router.get("/available", authenticateToken, requireStudent, async (req, res) => {
     try {
-        //Buscar examen activo que el estudiante no haya tomado
         const availableExam = await prisma.exam.findFirst({
             where: {
                 status: "ACTIVE",
                 examResults: {
                     none: {
-                        userId: req.user.id
+                        userId: req.user.id,
+                        status: "COMPLETED" // Asegurar que solo cuente exámenes completados
                     }
                 }
             },
@@ -192,7 +192,6 @@ router.get("/available", authenticateToken, requireStudent, async (req, res) => 
                                 header: true,
                                 alternatives: true,
                                 educationalIndicator: true,
-                                //NO incluir correctAnswer para estudiantes
                                 professor: {
                                     select: {
                                         name: true,
@@ -202,21 +201,28 @@ router.get("/available", authenticateToken, requireStudent, async (req, res) => 
                             }
                         }
                     },
-                    orderBy: {
-                        order: "asc"
-                    }
+                    orderBy: { order: "asc" }
                 }
             }
         })
 
         if(!availableExam) {
-            return res.status(404).json({error: "No hay exámenes disponibles o ya has completado todos los exámenes"})
+            return res.status(200).json({ 
+                exam: null, 
+                message: "No hay exámenes disponibles o ya has completado todos los exámenes"
+            })
         }
 
-        res.json({exam: availableExam, message: "Examen disponible encontrado"})
+        res.json({
+            exam: availableExam,
+            message: "Examen disponible encontrado"
+        })
     } catch (error) {
         console.error("Error obteniendo examen disponible:", error)
-        res.status(500).json({error:"Error interno del servidor"})
+        res.status(500).json({
+            error: "Error interno del servidor",
+            details: process.env.NODE_ENV === "development" ? error.message : undefined
+        })
     }
 })
 

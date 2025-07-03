@@ -16,6 +16,9 @@ export const studentService = {
     getAvailableExams: async () => {
         try {
             const response = await API.get("/exams/available")
+            if (!response.data.exam && response.data.message) {
+                return { exam: null, message: response.data.message };
+            }
             return response.data
         } catch (error) {
             console.error("Error obteniendo exámenes disponibles:", error)

@@ -16,19 +16,26 @@ const StudentDashboard = () => {
     const loadDashboardData = async () => {
         try {
             setLoading(true)
+            setError("")
 
             // Cargar datos en paralelo
-            const [availableExams, myReports, lastResult] = await Promise.allSettled([
-                studentService.getAvailableExams().catch(e => ({ exams: [], error: e.message })),
+            const [availableExams, myReports, lastResult] = await Promise.all([
+                studentService.getAvailableExams().catch(e => ({ exams: null, error: e.message })),
                 studentService.getMyReports().catch(e => ({ reports: [], error: e.message })),
                 studentService.getLastResult().catch(() => null)
             ])
 
             setDashboardData({
-                availableExams,
-                myReports,
+                availableExams: {
+                    exam: availableExams.exam || null,
+                    error: availableExams.error || null
+                },
+                myReports: {
+                    reports: myReports.reports || [],
+                    error: myReports.error || null
+                },
                 lastResult
-            })
+            });
 
             if (availableExams.error || myReports.error) {
             setError(availableExams.error || myReports.error)
