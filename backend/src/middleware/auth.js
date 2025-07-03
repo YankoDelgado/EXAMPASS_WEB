@@ -47,5 +47,5 @@ export const requireStudent = async(req, res, next) =>{
 
 //Generar JWT
 export const generateToken = (userId, role) =>{
-    return jwt.sign({userId, role}, process.env.JWT_SECRET, {expiresIn: "24h"})
+    return jwt.sign({userId, role}, process.env.JWT_SECRET, {expiresIn: "1h"})
 }
