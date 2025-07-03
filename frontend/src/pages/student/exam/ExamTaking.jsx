@@ -273,7 +273,7 @@ const ExamTaking = () => {
                 className="bg-primary"
                 />
                 <small>
-                {Object.keys(answers).length} de {examSession.exam.questions.length} respondidas
+                {Object.keys(answers).length} de {examData.exam.questions.length} respondidas
                 </small>
             </Col>
             <Col md={4} className="text-end">
@@ -302,13 +302,13 @@ const ExamTaking = () => {
                 </Card.Header>
                 <Card.Body>
                 <div className="d-grid gap-1" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
-                    {examSession.exam.questions.map((_, index) => (
+                    {examData.exam.questions.map((_, index) => (
                     <Button
                         key={index}
                         variant={
                         index === currentQuestionIndex
                             ? "primary"
-                            : answers[examSession.exam.questions[index].id] !== undefined
+                            : answers[examData.exam.questions[index].id] !== undefined
                             ? "success"
                             : "outline-secondary"
                         }
@@ -399,7 +399,7 @@ const ExamTaking = () => {
                     </Button>
 
                     <div className="d-flex gap-2">
-                    {currentQuestionIndex === examSession.exam.questions.length - 1 ? (
+                    {currentQuestionIndex === examData.exam.questions.length - 1 ? (
                         <Button variant="success" onClick={() => setSubmitModal(true)}>
                         <i className="bi bi-send me-1"></i>
                         Enviar Examen
@@ -434,14 +434,14 @@ const ExamTaking = () => {
                 </div>
                 <ul className="mb-0">
                 <li>
-                    Preguntas respondidas: {Object.keys(answers).length} de {examSession.exam.questions.length}
+                    Preguntas respondidas: {Object.keys(answers).length} de {examData.exam.questions.length}
                 </li>
                 <li>Tiempo restante: {formatTime(timeRemaining)}</li>
                 <li>Una vez enviado, no podrás hacer cambios</li>
                 </ul>
             </Alert>
 
-            {Object.keys(answers).length < examSession.exam.questions.length && (
+            {Object.keys(answers).length < examData.exam.questions.length && (
                 <Alert variant="warning">
                 <small>
                     <i className="bi bi-exclamation-triangle me-1"></i>
