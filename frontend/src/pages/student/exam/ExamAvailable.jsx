@@ -19,7 +19,7 @@ const ExamAvailable = () => {
         try {
             setLoading(true)
             setError("")
-            const data = await examService.getAvailableExams()
+            const response = await examService.getAvailableExams()
             // Verificar estructura de respuesta
             if (response && Array.isArray(response.exams)) {
                 setExams(response.exams);
