@@ -149,7 +149,7 @@ const StudentDashboard = () => {
                         </Col>
                         <Col sm={6}>
                             <small className="text-muted d-block">Tiempo límite:</small>
-                            <strong>{exam.timeLimit || 60} minutos</strong>
+                            <strong>{exam.timeLimit ? `${exam.timeLimit} minutos` : "Sin tiempo límite"}</strong>
                         </Col>
                         </Row>
                         <div className="d-grid">
