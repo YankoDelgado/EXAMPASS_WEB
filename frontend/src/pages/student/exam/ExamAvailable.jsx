@@ -203,16 +203,9 @@ const ExamAvailable = () => {
                     Antes de comenzar, ten en cuenta:
                     </h6>
                     <ul className="mb-0">
-                    if (exam.timeLimit){
-                        <li>
-                            Tienes <strong>{formatDuration(confirmModal.exam.timeLimit)}</strong> para completar el examen
-                        </li>
-                    } else {
-                        <li>
-                            Sin tiermpo límite
-                        </li>
-                    }
-                    
+                    <li>
+                        {exams.timeLimit ? `Tienes ${exams.timeLimit} minutos para completar el examen` : "Sin tiempo límite"}
+                    </li>
                     <li>
                         El examen contiene <strong>{confirmModal.exam.totalQuestions} preguntas</strong>
                     </li>
