@@ -20,7 +20,16 @@ const ExamAvailable = () => {
             setLoading(true)
             setError("")
             const data = await examService.getAvailableExams()
-            setExams(data.exams || [])
+            // Verificar estructura de respuesta
+            if (response && Array.isArray(response.exams)) {
+                setExams(response.exams);
+            } else if (response && Array.isArray(response.data)) {
+                // Si el backend devuelve "data" en lugar de "exams"
+                setExams(response.data);
+            } else {
+                setExams([]);
+                setError(response?.message || "No hay exámenes disponibles");
+            }
         } catch (error) {
             console.error("Error cargando exámenes:", error)
             setError("Error cargando exámenes disponibles")
