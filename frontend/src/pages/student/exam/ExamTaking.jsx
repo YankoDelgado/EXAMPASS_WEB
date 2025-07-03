@@ -4,59 +4,103 @@ import { useNavigate, useParams, useLocation } from "react-router-dom"
 import { examService } from "../../../services/examService"
 
 const ExamTaking = () => {
-    const navigate = useNavigate()
-    const { examId } = useParams()
-    const location = useLocation()
-    const [examSession, setExamSession] = useState(location.state?.examSession || null)
-    const [loading, setLoading] = useState(!examSession)
-    const [saving, setSaving] = useState(false)
-    const [error, setError] = useState("")
+    const navigate = useNavigate();
+    const { examId } = useParams();
 
-    // Estado del examen
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-    const [answers, setAnswers] = useState({})
-    const [timeRemaining, setTimeRemaining] = useState(0)
-    const [examStartTime, setExamStartTime] = useState(null)
+    //Estados principales
+    const [examData, setExamData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [examResultId, setExamResultId] = useState(null);
 
-    // Modales
-    const [submitModal, setSubmitModal] = useState(false)
-    const [timeWarningModal, setTimeWarningModal] = useState(false)
-    const [submitting, setSubmitting] = useState(false)
+    //Estado del examen
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+    const [answers, setAnswers] = useState({});
+    const [timeRemaining, setTimeRemaining] = useState(0);
 
-    // Cargar sesión del examen si no viene del estado
+    //Modales
+    const [submitModal, setSubmitModal] = useState(false);
+    const [timeWarningModal, setTimeWarningModal] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+
+    // Cargar o iniciar examen
     useEffect(() => {
-        if (!examSession) {
-        loadExamSession()
-        } else {
-        initializeExam()
-        }
-    }, [examId])
+        const initializeExam = async () => {
+            try {
+                setLoading(true);
+                
+                // Primero intentar recuperar sesión existente
+                const sessionResponse = await examService.getExamSession(examId);
+                
+                if (sessionResponse.success) {
+                    setExamData(sessionResponse.session);
+                    setAnswers(sessionResponse.session.answers);
+                    setExamResultId(sessionResponse.session.id);
+
+                    // Solo establecer tiempo si el examen tiene límite
+                    if (sessionResponse.session.exam.timeLimit) {
+                        setTimeRemaining(sessionResponse.session.timeRemaining);
+                    }
+                    return;
+                }
+                
+                // Si no hay sesión, iniciar una nueva
+                const startResponse = await examService.startExam(examId);
+                
+                if (!startResponse.success) {
+                    throw new Error(startResponse.error);
+                }
+                
+                // Obtener detalles completos de la nueva sesión
+                const newSessionResponse = await examService.getExamSession(examId);
+                
+                if (!newSessionResponse.success) {
+                    throw new Error(newSessionResponse.error);
+                }
+                
+                setExamData(newSessionResponse.session);
+                setAnswers(newSessionResponse.session.answers || {});
+                setTimeRemaining(newSessionResponse.session.timeRemaining);
+                setExamResultId(newSessionResponse.session.id);
+                
+            } catch (err) {
+                console.error("Error inicializando examen:", err);
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        initializeExam();
+    }, [examId]);
+
+    
 
     // Timer del examen
     useEffect(() => {
-        if (timeRemaining > 0) {
-        const timer = setInterval(() => {
-            setTimeRemaining((prev) => {
-            const newTime = prev - 1
+        if (examData?.exam?.timeLimit && timeRemaining > 0) {
+            const timer = setInterval(() => {
+                setTimeRemaining((prev) => {
+                    const newTime = prev - 1;
 
-            // Advertencia cuando quedan 5 minutos
-            if (newTime === 300 && !timeWarningModal) {
-                setTimeWarningModal(true)
-            }
+                    // Advertencia cuando quedan 5 minutos
+                    if (newTime === 300 && !timeWarningModal) {
+                        setTimeWarningModal(true);
+                    }
 
-            // Auto-envío cuando se acaba el tiempo
-            if (newTime <= 0) {
-                handleAutoSubmit()
-                return 0
-            }
+                    // Auto-envío cuando se acaba el tiempo
+                    if (newTime <= 0) {
+                        handleAutoSubmit();
+                        return 0;
+                    }
 
-            return newTime
-            })
-        }, 1000)
+                    return newTime;
+                });
+            }, 1000);
 
-        return () => clearInterval(timer)
+            return () => clearInterval(timer);
         }
-    }, [timeRemaining, timeWarningModal])
+    }, [timeRemaining, timeWarningModal, handleAutoSubmit, examData]);
 
     // Prevenir salida accidental
     useEffect(() => {
@@ -70,69 +114,28 @@ const ExamTaking = () => {
         return () => window.removeEventListener("beforeunload", handleBeforeUnload)
     }, [])
 
-    const loadExamSession = async () => {
-        try {
-            setLoading(true)
-            const data = await examService.getExamSession(examId)
-            setExamSession(data.session)
-            initializeExam(data.session)
-        } catch (error) {
-            console.error("Error cargando sesión:", error)
-            setError("Error cargando el examen. Intenta nuevamente.")
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const initializeExam = (session = examSession) => {
-        if (!session) return
-
-        // Configurar tiempo
-        const startTime = new Date(session.startedAt)
-        const timeLimit = session.exam.timeLimit * 60 // convertir a segundos
-        const elapsed = Math.floor((Date.now() - startTime.getTime()) / 1000)
-        const remaining = Math.max(0, timeLimit - elapsed)
-
-        setTimeRemaining(remaining)
-        setExamStartTime(startTime)
-
-        // Cargar respuestas existentes
-        const existingAnswers = {}
-        session.answers?.forEach((answer) => {
-            existingAnswers[answer.questionId] = answer.selectedAnswer
-        })
-        setAnswers(existingAnswers)
-
-        // Si el tiempo se agotó, auto-enviar
-        if (remaining <= 0) {
-            handleAutoSubmit()
-        }
-    }
-
     const handleAnswerChange = async (questionId, answerIndex) => {
-        const newAnswers = { ...answers, [questionId]: answerIndex }
-        setAnswers(newAnswers)
-
-        // Guardar respuesta automáticamente
+        
         try {
-            setSaving(true)
-            await examService.saveAnswer(examId, questionId, answerIndex)
+            const newAnswers = { ...answers, [questionId]: answerIndex }
+            setAnswers(newAnswers)
+
+            await examService.saveAnswer(examResultId, questionId, answerIndex)
         } catch (error) {
-            console.error("Error guardando respuesta:", error)
-        } finally {
-            setSaving(false)
+            console.error("Error guardando respuesta:", error);
+            setError("Error al guardar tu respuesta. Intenta nuevamente.");
         }
     }
 
     const handleNextQuestion = () => {
-        if (currentQuestionIndex < examSession.exam.questions.length - 1) {
-            setCurrentQuestionIndex(currentQuestionIndex + 1)
+        if (examData && currentQuestionIndex < examData.exam.questions.length - 1) {
+            setCurrentQuestionIndex(currentQuestionIndex + 1);
         }
     }
 
     const handlePreviousQuestion = () => {
         if (currentQuestionIndex > 0) {
-            setCurrentQuestionIndex(currentQuestionIndex - 1)
+            setCurrentQuestionIndex(currentQuestionIndex - 1);
         }
     }
 
@@ -143,7 +146,7 @@ const ExamTaking = () => {
     const handleSubmitExam = async () => {
         try {
             setSubmitting(true)
-            const result = await examService.submitExam(examId)
+            const result = await examService.submitExam(examResultId)
 
             // Redirigir al resultado
             navigate(`/student/exam/${examId}/result`, {
@@ -160,20 +163,22 @@ const ExamTaking = () => {
     }
 
     const handleAutoSubmit = useCallback(async () => {
-        try {
-            const result = await examService.submitExam(examId)
-            navigate(`/student/exam/${examId}/result`, {
-                state: {
-                examResult: result.examResult,
-                autoSubmitted: true,
-                },
-                replace: true,
-            })
-        } catch (error) {
-            console.error("Error en auto-envío:", error)
-            setError("El tiempo se agotó y hubo un error enviando el examen.")
+        if (examData?.exam?.timeLimit) {
+            try {
+                const result = await examService.submitExam(examResultId);
+                navigate(`/student/exam/${examId}/result`, {
+                    state: {
+                        examResult: result.examResult,
+                        autoSubmitted: true,
+                    },
+                    replace: true,
+                });
+            } catch (error) {
+                console.error("Error en auto-envío:", error);
+                setError("El tiempo se agotó y hubo un error enviando el examen.");
+            }
         }
-    }, [examId, navigate])
+    }, [examId, navigate, examResultId, examData])
 
     const formatTime = (seconds) => {
         const hours = Math.floor(seconds / 3600)
@@ -187,15 +192,16 @@ const ExamTaking = () => {
     }
 
     const getTimeColor = () => {
+        if (!examData?.exam?.timeLimit) return "secondary";
         if (timeRemaining > 600) return "success" // > 10 min
         if (timeRemaining > 300) return "warning" // > 5 min
         return "danger" // < 5 min
     }
 
     const getProgressPercentage = () => {
-        const answered = Object.keys(answers).length
-        const total = examSession?.exam?.questions?.length || 1
-        return (answered / total) * 100
+        const answered = Object.keys(answers).length;
+        const total = examData?.exam?.questions?.length || 1;
+        return (answered / total) * 100;
     }
 
     const currentQuestion = examSession?.exam?.questions?.[currentQuestionIndex]
@@ -253,10 +259,12 @@ const ExamTaking = () => {
             </Col>
             <Col md={4} className="text-center">
                 <div className="mb-1">
-                <Badge bg={getTimeColor()} className="fs-6">
-                    <i className="bi bi-clock me-1"></i>
-                    {formatTime(timeRemaining)}
-                </Badge>
+                    {examData?.exam?.timeLimit && (
+                        <Badge bg={getTimeColor()} className="fs-6">
+                            <i className="bi bi-clock me-1"></i>
+                            {formatTime(timeRemaining)}
+                        </Badge>
+                    )}
                 </div>
                 <ProgressBar
                 now={getProgressPercentage()}
@@ -460,28 +468,29 @@ const ExamTaking = () => {
         </Modal>
 
         {/* Modal de advertencia de tiempo */}
-        <Modal show={timeWarningModal} onHide={() => setTimeWarningModal(false)} centered>
-            <Modal.Header closeButton>
-            <Modal.Title className="text-warning">
-                <i className="bi bi-exclamation-triangle me-2"></i>
-                Advertencia de Tiempo
-            </Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-            <Alert variant="warning">
-                <h5>¡Quedan solo 5 minutos!</h5>
-                <p className="mb-0">
-                El tiempo del examen está por agotarse. Asegúrate de revisar tus respuestas y enviar el examen antes de
-                que se acabe el tiempo.
-                </p>
-            </Alert>
-            </Modal.Body>
-            <Modal.Footer>
-            <Button variant="warning" onClick={() => setTimeWarningModal(false)}>
-                Entendido
-            </Button>
-            </Modal.Footer>
-        </Modal>
+        {examData?.exam?.timeLimit && (
+            <Modal show={timeWarningModal} onHide={() => setTimeWarningModal(false)} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title className="text-warning">
+                        <i className="bi bi-exclamation-triangle me-2"></i>
+                        Advertencia de Tiempo
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Alert variant="warning">
+                        <h5>¡Quedan solo 5 minutos!</h5>
+                        <p className="mb-0">
+                            El tiempo del examen está por agotarse. Asegúrate de revisar tus respuestas.
+                        </p>
+                    </Alert>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="warning" onClick={() => setTimeWarningModal(false)}>
+                        Entendido
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+        )}
         </Container>
     )
 }

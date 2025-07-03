@@ -247,6 +247,7 @@ router.get("/available", authenticateToken, requireStudent, async (req, res) => 
 router.post("/:examId/start", authenticateToken, requireStudent, async (req, res) => {
     try {
         const {examId} = req.params
+        const userId = req.user.id;
 
         console.log("Iniciando examen:", {examId, userId: req.user.id})
 
@@ -273,8 +274,9 @@ router.post("/:examId/start", authenticateToken, requireStudent, async (req, res
         //Verificar que el estudiante no haya tomado ya este examen
         const existingResult = await prisma.examResult.findFirst({
             where: {
-                userId: req.user.id,
-                examId: examId
+                userId: userId,
+                examId: examId,
+                status: "COMPLETED"
             }
         })
 
@@ -282,7 +284,24 @@ router.post("/:examId/start", authenticateToken, requireStudent, async (req, res
             return res.status(400).json({error:"Ya has tomado este examen"})
         }
 
-        //Crear resultado de examen
+        // Buscar si hay una sesión en progreso
+        const existingSession = await prisma.examResult.findFirst({
+            where: {
+                userId: userId,
+                examId: examId,
+                status: "IN_PROGRESS"
+            }
+        });
+
+        // Si ya hay una sesión en progreso, devolver esa
+        if(existingSession) {
+            return res.status(200).json({
+                message: "Examen en progreso recuperado",
+                examResult: existingSession
+            });
+        }
+
+        //Crear nueva sesión de examen
         const examResult = await prisma.examResult.create({
             data: {
                 userId: req.user.id,
@@ -291,7 +310,18 @@ router.post("/:examId/start", authenticateToken, requireStudent, async (req, res
                 totalScore: 0,
                 percentage: 0,
                 status: "IN_PROGRESS",
-                startedAt: new Date()
+                createdAt: new Date()
+            },
+            include: {
+                exam: {
+                    include: {
+                        examQuestions: {
+                            include: {
+                                question: true
+                            }
+                        }
+                    }
+                }
             }
         })
 
@@ -300,18 +330,97 @@ router.post("/:examId/start", authenticateToken, requireStudent, async (req, res
         res.status(201).json({
             message: "Examen iniciado exitosamente",
             examResult: {
-                id: examResult.id,
-                examId: examResult.examId,
-                status: examResult.status,
-                startedAt: examResult.startedAt,
-                totalQuestions: examResult.totalQuestions
+                ...examResult,
+                questions: examResult.exam.examQuestions.map(eq => ({
+                    ...eq.question,
+                    order: eq.order
+                }))
             }
-        })
+        });
     } catch (error) {
         console.error("Error iniciando examen:", error)
         res.status(500).json({error:"Error interno del servidor"})
     }
 })
+
+//recuperar estado (estudiantes)
+router.get("/:examId/session", authenticateToken, requireStudent, async (req, res) => {
+    try {
+        const { examId } = req.params;
+        const userId = req.user.id;
+
+        // Buscar sesión activa
+        const examResult = await prisma.examResult.findFirst({
+            where: {
+                examId: examId,
+                userId: userId,
+                status: "IN_PROGRESS"
+            },
+            include: {
+                exam: {
+                    include: {
+                        examQuestions: {
+                            include: {
+                                question: true
+                            },
+                            orderBy: { order: "asc" }
+                        }
+                    }
+                },
+                answers: true
+            }
+        });
+
+        if (!examResult) {
+            return res.status(404).json({
+                success: false,
+                error: "No hay una sesión activa para este examen"
+            });
+        }
+
+        // Calcular tiempo restante
+        const timeLimit = examResult.exam.timeLimit * 60; // convertir a segundos
+        const elapsed = Math.floor((Date.now() - new Date(examResult.startedAt).getTime()) / 1000);
+        const timeRemaining = Math.max(0, timeLimit - elapsed);
+
+        // Formatear respuesta
+        const response = {
+            id: examResult.id,
+            startedAt: examResult.startedAt,
+            timeRemaining: timeRemaining,
+            exam: {
+                id: examResult.exam.id,
+                title: examResult.exam.title,
+                description: examResult.exam.description,
+                timeLimit: examResult.exam.timeLimit,
+                questions: examResult.exam.examQuestions.map(eq => ({
+                    id: eq.question.id,
+                    header: eq.question.header,
+                    alternatives: eq.question.alternatives,
+                    educationalIndicator: eq.question.educationalIndicator,
+                    professor: eq.question.professor,
+                    order: eq.order
+                }))
+            },
+            answers: examResult.answers.reduce((acc, answer) => {
+                acc[answer.questionId] = answer.selectedAnswer;
+                return acc;
+            }, {})
+        };
+
+        res.json({
+            success: true,
+            session: response
+        });
+
+    } catch (error) {
+        console.error("Error obteniendo sesión de examen:", error);
+        res.status(500).json({
+            success: false,
+            error: "Error interno del servidor"
+        });
+    }
+});
 
 //Responder pregunta
 router.post("/results/:resultId/answer", authenticateToken, requireStudent, async (req, res) => {

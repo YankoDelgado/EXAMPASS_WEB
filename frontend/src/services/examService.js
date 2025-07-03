@@ -36,10 +36,21 @@ export const examService = {
     startExam: async (examId) => {
         try {
             const response = await API.post(`/exams/${examId}/start`)
-            return response.data
+
+            if (!response.data.examResult) {
+                throw new Error(response.data.error || "Error al iniciar el examen");
+            }
+
+            return {
+                success: true,
+                examResult: response.data.examResult
+            };
         } catch (error) {
-            console.error("Error iniciando examen:", error)
-            throw error
+            console.error("Error iniciando examen:", error);
+            return {
+                success: false,
+                error: error.response?.data?.error || error.message
+            };
         }
     },
 
@@ -47,35 +58,60 @@ export const examService = {
     getExamSession: async (examId) => {
         try {
             const response = await API.get(`/exams/${examId}/session`)
-            return response.data
+            
+            if (!response.data.success) {
+                throw new Error(response.data.error || "Error al obtener sesión");
+            }
+
+            return {
+                success: true,
+                session: response.data.session
+            };
         } catch (error) {
-            console.error("Error obteniendo sesión del examen:", error)
-            throw error
+            console.error("Error obteniendo sesión:", error);
+            return {
+                success: false,
+                error: error.response?.data?.error || error.message
+            };
         }
     },
 
     // Guardar respuesta de una pregunta
-    saveAnswer: async (examId, questionId, answer) => {
+    saveAnswer: async (examResultId, questionId, answer) => {
         try {
-            const response = await API.post(`/exams/${examId}/answer`, {
+            const response = await API.post(`/exams/results/${examResultId}/answer`, {
                 questionId,
-                answer,
-            })
-            return response.data
+                selectedAnswer: answer
+            });
+            
+            return {
+                success: true,
+                answer: response.data.answer
+            };
         } catch (error) {
-            console.error("Error guardando respuesta:", error)
-            throw error
+            console.error("Error guardando respuesta:", error);
+            return {
+                success: false,
+                error: error.response?.data?.error || error.message
+            };
         }
     },
 
     // Enviar examen completo
-    submitExam: async (examId) => {
+    submitExam: async (examResultId) => {
         try {
-            const response = await API.post(`/exams/${examId}/submit`)
-            return response.data
+            const response = await API.post(`/exams/results/${examResultId}/finish`);
+        
+            return {
+                success: true,
+                result: response.data.result
+            };
         } catch (error) {
-            console.error("Error enviando examen:", error)
-            throw error
+            console.error("Error enviando examen:", error);
+            return {
+                success: false,
+                error: error.response?.data?.error || error.message
+            };
         }
     },
 
@@ -188,17 +224,6 @@ export const examService = {
             return response.data
         } catch (error) {
             console.error("Error cambiando estado del examen:", error)
-            throw error
-        }
-    },
-
-    // Duplicar examen (admin)
-    duplicateExam: async (examId) => {
-        try {
-            const response = await API.post(`/exams/${examId}/duplicate`)
-            return response.data
-        } catch (error) {
-            console.error("Error duplicando examen:", error)
             throw error
         }
     },
