@@ -43,21 +43,41 @@ const StudentReports = () => {
     const loadReports = async () => {
         try {
             setLoading(true);
-            const { success, reports: reportData, pagination: paginationData, error } = 
+            setError("");
+            
+            const { success, reports: reportData = [], pagination: paginationData = {}, error } = 
                 await studentService.getMyReports(filters);
 
-            if (!success) {
-                throw new Error(error || "Error cargando reportes");
-            }
+            if (!success) throw new Error(error || "Error al cargar reportes");
 
-            setReports(reportData);
-            setPagination(paginationData);
+            setReports(reportData.map(report => ({
+                ...report,
+                examResult: {
+                    percentage: report.examResult?.percentage || 0,
+                    completedAt: report.examResult?.completedAt || report.createdAt,
+                    totalQuestions: report.examResult?.totalQuestions || 0,
+                    exam: {
+                        title: report.examResult?.exam?.title || "Examen",
+                        ...report.examResult?.exam
+                    },
+                    ...report.examResult
+                }
+            })));
+
+            setPagination({
+                total: paginationData.total || 0,
+                pages: paginationData.pages || 0,
+                currentPage: paginationData.currentPage || filters.page,
+                limit: paginationData.limit || filters.limit
+            });
+
         } catch (error) {
-            setError("Error cargando reportes");
+            setError(error.message);
+            setReports([]);
             console.error("Error:", error);
         } finally {
             setLoading(false);
-        } 
+        }
     }
 
     const loadPersonalStats = async () => {
