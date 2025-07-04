@@ -7,6 +7,8 @@ const StudentReportView = () => {
     const navigate = useNavigate();
     const params = useParams();
     const [loading, setLoading] = useState(true);
+    const [report, setReport] = useState(null);
+    const [error, setError] = useState("");
     
     // Debug: Verificar todos los parámetros
     console.log("Parámetros de ruta:", params);
