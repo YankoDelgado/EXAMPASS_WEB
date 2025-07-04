@@ -127,10 +127,6 @@ const ExamResult = () => {
         }
     }
 
-    const handleRetakeExam = () => {
-        navigate("/student/exam")
-    }
-
     const handleBackToDashboard = () => {
         navigate("/student/dashboard")
     }
@@ -212,7 +208,7 @@ const ExamResult = () => {
                 <Card.Body className="text-center py-5">
                 {/* Puntaje animado */}
                 <div className="mb-4">
-                    <div className="display-1 fw-bold text-primary mb-2">{`${examResult.porcentage}%` || "..."}</div>
+                    <div className="display-1 fw-bold text-primary mb-2">{`${porcentage}%` || "..."}</div>
                     <h4 className={`text-${getScoreColor(examResult.percentage)}`}>
                     {showScore && getScoreMessage(examResult.percentage)}
                     </h4>
