@@ -15,60 +15,80 @@ export const studentService = {
     // Obtener mis reportes
     getMyReports: async (filters = {}) => {
         try {
+            // 1. Preparar parámetros con validación
             const params = {
                 params: {
-                    search: filters.search,
-                    dateFrom: filters.dateFrom,
-                    dateTo: filters.dateTo,
-                    minScore: filters.minScore,
-                    maxScore: filters.maxScore,
-                    page: Number(filters.page) || 1,
-                    limit: Number(filters.limit) || 10
+                    search: filters.search || undefined,
+                    dateFrom: filters.dateFrom || undefined,
+                    dateTo: filters.dateTo || undefined,
+                    minScore: Number.isNaN(Number(filters.minScore)) ? undefined : Number(filters.minScore),
+                    maxScore: Number.isNaN(Number(filters.maxScore)) ? undefined : Number(filters.maxScore),
+                    page: Math.max(1, Number(filters.page) || 1),
+                    limit: Math.min(50, Math.max(1, Number(filters.limit) || 10))
                 }
             };
 
+            // 2. Hacer la petición
             const response = await API.get("/reports/my/reports", params);
             
+            // 3. Validación exhaustiva de la respuesta
             if (!response.data) {
-                throw new Error("Estructura de respuesta inválida");
+                throw new Error("El servidor no devolvió datos");
             }
 
+            // Validar estructura mínima esperada
+            const isValidResponse = (
+                Array.isArray(response.data.reports) && 
+                (response.data.pagination === undefined || (
+                    typeof response.data.pagination.total === 'number' &&
+                    typeof response.data.pagination.pages === 'number'
+                ))
+            );
+
+            if (!isValidResponse) {
+                console.warn("Estructura de respuesta inesperada:", response.data);
+                throw new Error("Formato de datos recibido no válido");
+            }
+
+            // 4. Procesar y devolver datos
             return {
                 success: true,
-                reports: response.data.reports || [],
-                pagination: response.data.pagination || {
-                    total: 0,
-                    pages: 0,
-                    currentPage: 1,
-                    limit: 10
+                reports: response.data.reports,
+                pagination: {
+                    total: response.data.pagination?.total || response.data.reports.length,
+                    pages: response.data.pagination?.pages || 1,
+                    currentPage: response.data.pagination?.currentPage || params.params.page,
+                    limit: response.data.pagination?.limit || params.params.limit
                 },
-                stats: response.data.stats || {
-                    totalReports: 0,
-                    averageScore: 0,
-                    bestScore: 0,
-                    lastExamDate: null,
-                    improvementTrend: "stable"
-                }
+                // Solo incluir stats si viene en la respuesta
+                ...(response.data.stats && { stats: response.data.stats })
             };
+
         } catch (error) {
-            console.error("Error obteniendo reportes:", error);
+            console.error("Error en getMyReports:", {
+                error: error.message,
+                stack: error.stack,
+                response: error.response?.data
+            });
+
+            // Determinar tipo de error
+            const errorType = !error.response ? "network" :
+                                error.response.status === 404 ? "not-found" :
+                                "server";
+
             return {
                 success: false,
+                error: error.response?.data?.error || error.message || "Error al obtener reportes",
+                errorType,
                 reports: [],
                 pagination: {
                     total: 0,
                     pages: 0,
-                    currentPage: 1,
-                    limit: 10
+                    currentPage: Number(filters.page) || 1,
+                    limit: Number(filters.limit) || 10
                 },
-                stats: {
-                    totalReports: 0,
-                    averageScore: 0,
-                    bestScore: 0,
-                    lastExamDate: null,
-                    improvementTrend: "stable"
-                },
-                error: error.response?.data?.error || "Error al obtener reportes"
+                // No devolver stats en caso de error para evitar confusión
+                stats: undefined
             };
         }
     },

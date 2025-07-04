@@ -45,51 +45,80 @@ const StudentReports = () => {
             setLoading(true);
             setError("");
             
-            const { success, reports: reportData = [], pagination: paginationData = {}, error } = 
-                await studentService.getMyReports(filters);
+            console.log("Enviando filters al backend:", filters); // ← Log de diagnóstico
+            
+            const response = await studentService.getMyReports(filters);
+            console.log("Respuesta del backend:", response); // ← Log de diagnóstico
+            
+            if (!response.success) {
+                throw new Error(response.error || "Error al cargar reportes");
+            }
 
-            if (!success) throw new Error(error || "Error al cargar reportes");
+            const { reports: reportData = [], pagination: paginationData = {} } = response;
 
-            setReports(reportData.map(report => ({
-                ...report,
-                examResult: {
-                    percentage: report.examResult?.percentage || 0,
-                    completedAt: report.examResult?.completedAt || report.createdAt,
-                    totalQuestions: report.examResult?.totalQuestions || 0,
-                    exam: {
-                        title: report.examResult?.exam?.title || "Examen",
-                        ...report.examResult?.exam
-                    },
-                    ...report.examResult
+            // Validación profunda de datos
+            if (!Array.isArray(reportData)) {
+                throw new Error("Formato de datos inválido: se esperaba array de reportes");
+            }
+
+            const processedReports = reportData.map(report => {
+                if (!report || !report.id) {
+                    console.warn("Reporte inválido omitido:", report);
+                    return null;
                 }
-            })));
+                
+                return {
+                    ...report,
+                    examResult: {
+                        percentage: report.examResult?.percentage || 0,
+                        completedAt: report.examResult?.completedAt || report.createdAt || new Date().toISOString(),
+                        totalQuestions: report.examResult?.totalQuestions || 0,
+                        exam: {
+                            title: report.examResult?.exam?.title || "Examen sin título",
+                            ...report.examResult?.exam
+                        },
+                        ...report.examResult
+                    }
+                };
+            }).filter(Boolean);
 
+            setReports(processedReports);
             setPagination({
-                total: paginationData.total || 0,
-                pages: paginationData.pages || 0,
+                total: paginationData.total || processedReports.length,
+                pages: paginationData.pages || 1,
                 currentPage: paginationData.currentPage || filters.page,
                 limit: paginationData.limit || filters.limit
             });
 
+            console.log("Reportes procesados:", processedReports); // ← Log de diagnóstico
+
         } catch (error) {
             setError(error.message);
             setReports([]);
-            console.error("Error:", error);
+            console.error("Error cargando reportes:", error);
         } finally {
             setLoading(false);
         }
     }
 
     const loadPersonalStats = async () => {
-        try {
-            const { success, stats: statsData } = await studentService.getPersonalStats();
-            if (success) {
-                setStats(statsData);
-            }
-        } catch (error) {
-            console.error("Error cargando estadísticas:", error);
+    try {
+        const response = await studentService.getPersonalStats();
+        console.log("Estadísticas recibidas:", response); // ← Log de diagnóstico
+        
+        if (response.success) {
+            setStats({
+                totalReports: response.stats?.totalReports || 0,
+                averageScore: response.stats?.averageScore || 0,
+                bestScore: response.stats?.bestScore || 0,
+                lastExamDate: response.stats?.lastExamDate || null,
+                improvementTrend: response.stats?.improvementTrend || "stable"
+            });
         }
+    } catch (error) {
+        console.error("Error cargando estadísticas:", error);
     }
+};
 
     const handleFilterChange = (name, value) => {
         setFilters((prev) => ({
