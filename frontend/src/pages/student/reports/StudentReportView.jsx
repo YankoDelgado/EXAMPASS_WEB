@@ -1,212 +1,213 @@
-import { useState, useEffect } from "react"
-import { Container, Card, Button, Alert, Row, Col, Badge, Spinner, ProgressBar, ListGroup } from "react-bootstrap"
-import { useNavigate, useParams } from "react-router-dom"
-import { studentService } from "../../../services/studentService"
+import React, { useState, useEffect, useCallback } from "react";
+import { Container, Card, Button, Alert, Row, Col, Badge, Spinner, ProgressBar, ListGroup } from "react-bootstrap";
+import { useNavigate, useParams } from "react-router-dom";
+import { studentService } from "../../../services/studentService";
 
-const StudentReportView = () => {
+const initialReportState = {
+    id: '',
+    examResult: {
+        percentage: 0,
+        totalScore: 0,
+        totalQuestions: 0,
+        completedAt: new Date().toISOString(),
+        exam: {
+        title: 'Cargando...',
+        description: '',
+        timeLimit: 0,
+        passingScore: 60
+        }
+    },
+    contentBreakdown: {},
+    strengths: [],
+    weaknesses: [],
+    recommendations: []
+    };
+
+    const StudentReportView = () => {
     const { reportId } = useParams();
     const navigate = useNavigate();
     
-
-    const [report, setReport] = useState({
-        id: '',
-        examResult: {
-            percentage: 0,
-            totalScore: 0,
-            totalQuestions: 0,
-            completedAt: new Date().toISOString(),
-            exam: {
-                title: 'Cargando...',
-                description: '',
-                timeLimit: 0,
-                passingScore: 60
-            }
-        },
-        contentBreakdown: {},
-        strengths: [],
-        weaknesses: [],
-        recommendations: []
-    });
-
+    const [report, setReport] = useState(initialReportState);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-
-    const getSafeText = (value, fallback = "No disponible") => {
+    const getSafeText = useCallback((value, fallback = "No disponible") => {
         return value || fallback;
-    };
+    }, []);
 
-    const validateAndSetReportData = (data) => {
+    const validateAndSetReportData = useCallback((data) => {
         if (!data?.report || 
             !data.report.id || 
             !data.report.examResult || 
             typeof data.report.examResult.percentage !== 'number') {
-            throw new Error("Estructura de datos del reporte inválida");
+        throw new Error("Estructura de datos del reporte inválida");
         }
 
-        setReport({
-            id: data.report.id,
-            contentBreakdown: data.report.contentBreakdown || {},
-            strengths: data.report.strengths || [],
-            weaknesses: data.report.weaknesses || [],
-            recommendations: data.report.recommendations || [],
-            assignedProfessor: data.report.assignedProfessor || null,
-            professorSubject: data.report.professorSubject || null,
-            examResult: {
-                percentage: data.report.examResult.percentage || 0,
-                totalScore: data.report.examResult.totalScore || 0,
-                totalQuestions: data.report.examResult.totalQuestions || 0,
-                completedAt: data.report.examResult.completedAt || new Date().toISOString(),
-                exam: {
-                    title: data.report.examResult.exam?.title || 'Examen',
-                    description: data.report.examResult.exam?.description || '',
-                    timeLimit: data.report.examResult.exam?.timeLimit || 0,
-                    passingScore: data.report.examResult.exam?.passingScore || 60
-                }
+        const validatedReport = {
+        id: data.report.id,
+        contentBreakdown: data.report.contentBreakdown || {},
+        strengths: data.report.strengths || [],
+        weaknesses: data.report.weaknesses || [],
+        recommendations: data.report.recommendations || [],
+        assignedProfessor: data.report.assignedProfessor || null,
+        professorSubject: data.report.professorSubject || null,
+        examResult: {
+            percentage: data.report.examResult.percentage || 0,
+            totalScore: data.report.examResult.totalScore || 0,
+            totalQuestions: data.report.examResult.totalQuestions || 0,
+            completedAt: data.report.examResult.completedAt || new Date().toISOString(),
+            exam: {
+            title: data.report.examResult.exam?.title || 'Examen',
+            description: data.report.examResult.exam?.description || '',
+            timeLimit: data.report.examResult.exam?.timeLimit || 0,
+            passingScore: data.report.examResult.exam?.passingScore || 60
             }
-        });
-    };
+        }
+        };
 
-    const loadReport = async () => {
+        setReport(validatedReport);
+    }, []);
+
+    const loadReport = useCallback(async () => {
         try {
-            console.log("Cargando reporte con ID:", reportId);
-            
-            if (!reportId?.match(/^[a-zA-Z0-9-_]+$/)) {
-                throw new Error("Formato de ID de reporte no válido");
-            }
-
-            const data = await studentService.getReport(reportId);
-            validateAndSetReportData(data);
-            
-        } catch (error) {
-            console.error("Error cargando reporte:", {
-                error: error.message,
-                reportId,
-                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-            });
-            
-            throw error;
+        if (!reportId?.match(/^[a-zA-Z0-9-_]+$/)) {
+            throw new Error("Formato de ID de reporte no válido");
         }
-    };
 
-    const handleLoadReport = async () => {
+        const data = await studentService.getReport(reportId);
+        validateAndSetReportData(data);
+        
+        } catch (error) {
+        console.error("Error cargando reporte:", {
+            error: error.message,
+            reportId,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
+        throw error;
+        }
+    }, [reportId, validateAndSetReportData]);
+
+    const handleLoadReport = useCallback(async () => {
         setLoading(true);
         setError(null);
         
         try {
-            await loadReport();
+        await loadReport();
         } catch (error) {
-            setError(error.message || "Error desconocido al cargar el reporte");
-                
-            if (error.message.match(/no válido|inválida|no encontrado/i)) {
-                navigate("/student/reports", {
-                    state: { 
-                        error: error.message,
-                        reportId 
-                    },
-                    replace: true
-                });
-            }
-        } finally {
-            setLoading(false);
+        const errorMessage = error.message || "Error desconocido al cargar el reporte";
+        setError(errorMessage);
+        
+        if (error.message.match(/no válido|inválida|no encontrado/i)) {
+            navigate("/student/reports", {
+            state: { 
+                error: errorMessage,
+                reportId 
+            },
+            replace: true
+            });
         }
-    };
+        } finally {
+        setLoading(false);
+        }
+    }, [loadReport, navigate, reportId]);
 
     useEffect(() => {
-        let isMounted = true; 
+        let isMounted = true;
 
         const initialize = async () => {
-            try {
-                await handleLoadReport();
-            } catch (error) {
-                if (isMounted) {
-                    setError(error.message);
-                }
+        try {
+            if (isMounted) {
+            await handleLoadReport();
             }
+        } catch (error) {
+            if (isMounted) {
+            setError(error.message);
+            }
+        }
         };
 
         initialize();
 
         return () => {
-            isMounted = false;
+        isMounted = false;
         };
-    }, [reportId, navigate]); 
+    }, [handleLoadReport]);
 
-    const handleRetry = () => {
+    const handleRetry = useCallback(() => {
         handleLoadReport();
-    };
+    }, [handleLoadReport]);
 
-    const getScoreColor = (percentage) => {
-        if (percentage >= 90) return "success"
-        if (percentage >= 80) return "info"
-        if (percentage >= 70) return "warning"
-        return "danger"
-    }
+    const getScoreColor = useCallback((percentage) => {
+        if (percentage >= 90) return "success";
+        if (percentage >= 80) return "info";
+        if (percentage >= 70) return "warning";
+        return "danger";
+    }, []);
 
-    const getPerformanceLevel = (percentage) => {
-        if (percentage >= 90) return { level: "Excelente", icon: "bi-trophy-fill", color: "success" }
-        if (percentage >= 80) return { level: "Muy Bueno", icon: "bi-star-fill", color: "info" }
-        if (percentage >= 70) return { level: "Bueno", icon: "bi-check-circle-fill", color: "warning" }
-        if (percentage >= 60) return { level: "Regular", icon: "bi-check-circle", color: "primary" }
-        return { level: "Necesita Mejorar", icon: "bi-x-circle-fill", color: "danger" }
-    }
+    const getPerformanceLevel = useCallback((percentage) => {
+        if (percentage >= 90) return { level: "Excelente", icon: "bi-trophy-fill", color: "success" };
+        if (percentage >= 80) return { level: "Muy Bueno", icon: "bi-star-fill", color: "info" };
+        if (percentage >= 70) return { level: "Bueno", icon: "bi-check-circle-fill", color: "warning" };
+        if (percentage >= 60) return { level: "Regular", icon: "bi-check-circle", color: "primary" };
+        return { level: "Necesita Mejorar", icon: "bi-x-circle-fill", color: "danger" };
+    }, []);
 
-    const formatDate = (dateString) => {
+    const formatDate = useCallback((dateString) => {
         return new Date(dateString).toLocaleDateString("es-ES", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-        })
-    }
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        });
+    }, []);
 
     if (loading) {
         return (
-            <Container>
-                <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
-                <Spinner animation="border" role="status">
-                    <span className="visually-hidden">Cargando reporte...</span>
-                </Spinner>
-                </div>
-            </Container>
-        )
+        <Container>
+            <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "400px" }}>
+            <Spinner animation="border" role="status">
+                <span className="visually-hidden">Cargando reporte...</span>
+            </Spinner>
+            </div>
+        </Container>
+        );
     }
 
     if (error) {
         return (
-            <Container>
-                <Alert variant="danger">
-                <Alert.Heading>Error</Alert.Heading>
-                <p>{error}</p>
-                <div className="d-flex gap-2">
-                    <Button variant="outline-danger" onClick={loadReport}>
-                    Reintentar
-                    </Button>
-                    <Button variant="secondary" onClick={() => navigate("/student/reports")}>
-                    Volver a Reportes
-                    </Button>
-                </div>
-                </Alert>
-            </Container>
-        )
-    }
-
-    if (!report) {
-        return (
-            <Container>
-                <Alert variant="warning">
-                <Alert.Heading>Reporte no encontrado</Alert.Heading>
-                <p>El reporte que buscas no existe o no tienes permisos para verlo.</p>
-                <Button variant="outline-warning" onClick={() => navigate("/student/reports")}>
-                    Volver a Reportes
+        <Container>
+            <Alert variant="danger">
+            <Alert.Heading>Error</Alert.Heading>
+            <p>{error}</p>
+            <div className="d-flex gap-2">
+                <Button variant="outline-danger" onClick={handleRetry}>
+                Reintentar
                 </Button>
-                </Alert>
-            </Container>
-        )
+                <Button variant="secondary" onClick={() => navigate("/student/reports")}>
+                Volver a Reportes
+                </Button>
+            </div>
+            </Alert>
+        </Container>
+        );
     }
 
-    const performance = getPerformanceLevel(report.examResult?.percentage || 0)
+    if (!report || !report.id) {
+        return (
+        <Container>
+            <Alert variant="warning">
+            <Alert.Heading>Reporte no encontrado</Alert.Heading>
+            <p>El reporte que buscas no existe o no tienes permisos para verlo.</p>
+            <Button variant="outline-warning" onClick={() => navigate("/student/reports")}>
+                Volver a Reportes
+            </Button>
+            </Alert>
+        </Container>
+        );
+    }
+
+    const performance = getPerformanceLevel(report.examResult?.percentage || 0);
 
     return (
         <Container>
@@ -298,7 +299,11 @@ const StudentReportView = () => {
                             <span className="fw-medium">{indicator}</span>
                             <Badge bg={getScoreColor(percentage)}>{percentage}%</Badge>
                             </div>
-                            <ProgressBar now={percentage} variant={getScoreColor(percentage)} style={{ height: "12px" }} />
+                            <ProgressBar 
+                            now={percentage} 
+                            variant={getScoreColor(percentage)} 
+                            style={{ height: "12px" }} 
+                            />
                         </div>
                         ))}
 
@@ -345,7 +350,7 @@ const StudentReportView = () => {
                 {report.strengths && report.strengths.length > 0 ? (
                     <ListGroup variant="flush">
                     {report.strengths.map((strength, index) => (
-                        <ListGroup.Item key={index} className="px-0 py-2">
+                        <ListGroup.Item key={`strength-${index}`} className="px-0 py-2">
                         <i className="bi bi-check-circle-fill text-success me-2"></i>
                         {strength}
                         </ListGroup.Item>
@@ -371,7 +376,7 @@ const StudentReportView = () => {
                 {report.weaknesses && report.weaknesses.length > 0 ? (
                     <ListGroup variant="flush">
                     {report.weaknesses.map((weakness, index) => (
-                        <ListGroup.Item key={index} className="px-0 py-2">
+                        <ListGroup.Item key={`weakness-${index}`} className="px-0 py-2">
                         <i className="bi bi-arrow-right-circle text-warning me-2"></i>
                         {weakness}
                         </ListGroup.Item>
@@ -402,7 +407,7 @@ const StudentReportView = () => {
                 {report.recommendations && report.recommendations.length > 0 ? (
                     <div>
                     {report.recommendations.map((recommendation, index) => (
-                        <Alert key={index} variant="info" className="mb-2">
+                        <Alert key={`recommendation-${index}`} variant="info" className="mb-2">
                         <i className="bi bi-info-circle me-2"></i>
                         {recommendation}
                         </Alert>
@@ -498,7 +503,7 @@ const StudentReportView = () => {
             </Col>
         </Row>
         </Container>
-    )
-}
+    );
+};
 
-export default StudentReportView
+export default React.memo(StudentReportView);
