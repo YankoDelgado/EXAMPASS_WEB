@@ -13,13 +13,63 @@ export const studentService = {
     },
 
     // Obtener mis reportes
-    getMyReports: async () => {
+    getMyReports: async (filters = {}) => {
         try {
-            const response = await API.get("/reports/my/reports")
-            return response.data
+            const params = {
+                params: {
+                    search: filters.search,
+                    dateFrom: filters.dateFrom,
+                    dateTo: filters.dateTo,
+                    minScore: filters.minScore,
+                    maxScore: filters.maxScore,
+                    page: filters.page,
+                    limit: filters.limit
+                }
+            };
+
+            const response = await API.get("/reports/my/reports", params);
+            
+            if (!response.data) {
+                throw new Error("Estructura de respuesta inválida");
+            }
+
+            return {
+                success: true,
+                reports: response.data.reports || [],
+                pagination: response.data.pagination || {
+                    total: 0,
+                    pages: 0,
+                    currentPage: 1,
+                    limit: 10
+                },
+                stats: response.data.stats || {
+                    totalReports: 0,
+                    averageScore: 0,
+                    bestScore: 0,
+                    lastExamDate: null,
+                    improvementTrend: "stable"
+                }
+            };
         } catch (error) {
-            console.error("Error obteniendo reportes:", error)
-            throw error
+            console.error("Error obteniendo reportes:", error);
+            return {
+                success: false,
+                reports: [],
+                pagination: {
+                    total: 0,
+                    pages: 0,
+                    currentPage: 1,
+                    limit: 10
+                },
+                stats: {
+                    totalReports: 0,
+                    averageScore: 0,
+                    bestScore: 0,
+                    lastExamDate: null,
+                    improvementTrend: "stable"
+                },
+                error: error.response?.data?.error || "Error al obtener reportes"
+            };
         }
     },
 
@@ -70,37 +120,20 @@ export const studentService = {
     // Obtener estadísticas personales
     getPersonalStats: async () => {
         try {
-            const response = await API.get("/reports/my/reports");
+            const response = await API.get("/reports/my/reports", {
+                params: { page: 1, limit: 1 }
+            });
             
-            // Asegurar estructura consistente incluso si hay errores en el backend
             if (!response.data?.stats) {
                 throw new Error("Estructura de respuesta inválida");
             }
 
             return {
                 success: true,
-                stats: {
-                    totalReports: response.data.stats.totalReports || 0,
-                    averageScore: response.data.stats.averageScore || 0,
-                    bestScore: response.data.stats.bestScore || 0,
-                    lastExamDate: response.data.stats.lastExamDate || null,
-                    improvementTrend: response.data.stats.improvementTrend || "stable",
-                    subjectPerformance: response.data.stats.subjectPerformance || [],
-                    lastExam: response.data.stats.lastExam || {
-                        score: 0,
-                        correctAnswers: 0,
-                        totalQuestions: 0,
-                        strengths: [],
-                        weaknesses: [],
-                        recommendations: [],
-                        professor: null
-                    }
-                }
+                stats: response.data.stats
             };
         } catch (error) {
             console.error("Error obteniendo estadísticas:", error);
-            
-            // Devuelve una estructura vacía pero consistente
             return {
                 success: false,
                 stats: {
@@ -108,17 +141,7 @@ export const studentService = {
                     averageScore: 0,
                     bestScore: 0,
                     lastExamDate: null,
-                    improvementTrend: "stable",
-                    subjectPerformance: [],
-                    lastExam: {
-                        score: 0,
-                        correctAnswers: 0,
-                        totalQuestions: 0,
-                        strengths: [],
-                        weaknesses: [],
-                        recommendations: [],
-                        professor: null
-                    }
+                    improvementTrend: "stable"
                 },
                 error: error.response?.data?.error || "Error al obtener estadísticas"
             };

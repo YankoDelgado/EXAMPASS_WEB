@@ -271,109 +271,129 @@ router.get("/:examResultId", authenticateToken, async (req, res) => {
 router.get("/my/reports", authenticateToken, requireStudent, async (req, res) => {
     try {
         const userId = req.user.id;
+        const { search, dateFrom, dateTo, minScore, maxScore, page = 1, limit = 10 } = req.query;
 
-        // 1. Obtener todos los reportes y resultados del estudiante
-        const reports = await prisma.examReport.findMany({
+        // Construir condiciones WHERE
+        const where = {
+            examResult: { userId },
+            ...(search && {
+                examResult: {
+                    exam: {
+                        title: { contains: search, mode: 'insensitive' }
+                    }
+                }
+            }),
+            ...(dateFrom && {
+                createdAt: { gte: new Date(dateFrom) }
+            }),
+            ...(dateTo && {
+                createdAt: { lte: new Date(dateTo) }
+            }),
+            ...((minScore || maxScore) && {
+                examResult: {
+                    percentage: {
+                        ...(minScore && { gte: Number(minScore) }),
+                        ...(maxScore && { lte: Number(maxScore) })
+                    }
+                }
+            })
+        };
+
+        // Obtener reportes con paginación
+        const [reports, total] = await prisma.$transaction([
+            prisma.examReport.findMany({
+                where,
+                include: {
+                    examResult: {
+                        include: {
+                            exam: {
+                                select: {
+                                    title: true,
+                                    description: true
+                                }
+                            }
+                        },
+                        select: {
+                            id: true,
+                            percentage: true,
+                            completedAt: true,
+                            totalScore: true,
+                            totalQuestions: true,
+                            exam: true
+                        }
+                    }
+                },
+                orderBy: { createdAt: 'desc' },
+                skip: (page - 1) * limit,
+                take: limit
+            }),
+            prisma.examReport.count({ where })
+        ]);
+
+        // Calcular estadísticas (sin filtros para que sean globales)
+        const allReports = await prisma.examReport.findMany({
             where: { examResult: { userId } },
             include: {
                 examResult: {
                     select: {
                         percentage: true,
-                        completedAt: true,
-                        totalScore: true,
-                        totalQuestions: true
+                        completedAt: true
                     }
                 }
-            },
-            orderBy: { createdAt: 'desc' }
+            }
         });
 
-        // 2. Calcular estadísticas básicas
-        const stats = {
-            totalReports: reports.length,
-            averageScore: 0,
-            bestScore: 0,
-            lastExamDate: null,
-            improvementTrend: "stable",
-            subjectPerformance: [],
-            lastExam: null
-        };
-
-        if (reports.length > 0) {
-            // Calcular puntajes promedio y mejor puntaje
-            const percentages = reports.map(r => r.examResult.percentage);
-            stats.averageScore = percentages.reduce((a, b) => a + b, 0) / percentages.length;
-            stats.bestScore = Math.max(...percentages);
-            stats.lastExamDate = reports[0].examResult.completedAt;
-
-            // Calcular tendencia (comparando los últimos 2 exámenes)
-            if (reports.length >= 2) {
-                const [last, previous] = reports;
-                stats.improvementTrend = last.examResult.percentage > previous.examResult.percentage 
-                    ? "improving" 
-                    : last.examResult.percentage < previous.examResult.percentage 
-                        ? "declining" 
-                        : "stable";
-            }
-
-            // Procesar contentBreakdown para obtener desempeño por materia
-            const subjectMap = {};
-            reports.forEach(report => {
-                try {
-                    const breakdown = typeof report.contentBreakdown === 'string' 
-                        ? JSON.parse(report.contentBreakdown) 
-                        : report.contentBreakdown;
-                    
-                    if (breakdown) {
-                        Object.entries(breakdown).forEach(([subject, score]) => {
-                            if (!subjectMap[subject]) {
-                                subjectMap[subject] = { total: 0, sum: 0 };
-                            }
-                            subjectMap[subject].total++;
-                            subjectMap[subject].sum += Number(score);
-                        });
-                    }
-                } catch (e) {
-                    console.error("Error procesando contentBreakdown:", e);
-                }
-            });
-
-            stats.subjectPerformance = Object.entries(subjectMap).map(([subject, data]) => ({
-                subject,
-                averageScore: Math.round(data.sum / data.total),
-                totalExams: data.total
-            }));
-
-            // Datos del último examen
-            const lastReport = reports[0];
-            stats.lastExam = {
-                score: lastReport.examResult.percentage,
-                correctAnswers: lastReport.examResult.totalScore,
-                totalQuestions: lastReport.examResult.totalQuestions,
-                strengths: lastReport.strengths,
-                weaknesses: lastReport.weaknesses,
-                recommendations: lastReport.recommendations,
-                professor: lastReport.assignedProfessor ? {
-                    name: lastReport.assignedProfessor,
-                    subject: lastReport.professorSubject
-                } : null
-            };
-        }
+        const stats = calculateStats(allReports);
 
         res.json({
             success: true,
+            reports,
+            pagination: {
+                total,
+                pages: Math.ceil(total / limit),
+                currentPage: Number(page),
+                limit: Number(limit)
+            },
             stats
         });
 
     } catch (error) {
-        console.error("Error calculando estadísticas:", error);
+        console.error("Error obteniendo reportes:", error);
         res.status(500).json({
             success: false,
-            error: "Error interno del servidor",
-            details: process.env.NODE_ENV === "development" ? error.message : undefined
+            error: "Error interno del servidor"
         });
     }
-})
+});
+
+function calculateStats(reports) {
+    const stats = {
+        totalReports: reports.length,
+        averageScore: 0,
+        bestScore: 0,
+        lastExamDate: null,
+        improvementTrend: "stable",
+        subjectPerformance: []
+    };
+
+    if (reports.length > 0) {
+        const percentages = reports.map(r => r.examResult.percentage);
+        stats.averageScore = percentages.reduce((a, b) => a + b, 0) / percentages.length;
+        stats.bestScore = Math.max(...percentages);
+        stats.lastExamDate = reports[0].examResult.completedAt;
+
+        if (reports.length >= 2) {
+            const [last, previous] = reports;
+            stats.improvementTrend = last.examResult.percentage > previous.examResult.percentage 
+                ? "improving" 
+                : last.examResult.percentage < previous.examResult.percentage 
+                    ? "declining" 
+                    : "stable";
+        }
+    }
+
+    return stats;
+}
 
 //Estadísticas generales (solo admins)
 router.get("/admin/statistics", authenticateToken, requireAdmin, async (req, res) => {

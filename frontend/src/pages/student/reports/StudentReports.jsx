@@ -42,66 +42,32 @@ const StudentReports = () => {
 
     const loadReports = async () => {
         try {
-            setLoading(true)
-            const data = await studentService.getMyReports()
+            setLoading(true);
+            const { success, reports: reportData, pagination: paginationData, error } = 
+                await studentService.getMyReports(filters);
 
-            // Aplicar filtros localmente (idealmente esto se haría en el backend)
-            let filteredReports = data.reports || []
-
-            // Filtro por búsqueda
-            if (filters.search) {
-                filteredReports = filteredReports.filter((report) =>
-                report.examResult?.exam?.title?.toLowerCase().includes(filters.search.toLowerCase()),
-                )
+            if (!success) {
+                throw new Error(error || "Error cargando reportes");
             }
 
-            // Filtro por fecha
-            if (filters.dateFrom) {
-                filteredReports = filteredReports.filter((report) => new Date(report.createdAt) >= new Date(filters.dateFrom))
-            }
-
-            if (filters.dateTo) {
-                filteredReports = filteredReports.filter((report) => new Date(report.createdAt) <= new Date(filters.dateTo))
-            }
-
-            // Filtro por puntaje
-            if (filters.minScore) {
-                filteredReports = filteredReports.filter(
-                    (report) => (report.examResult?.percentage || 0) >= Number.parseInt(filters.minScore),
-                )
-            }
-
-            if (filters.maxScore) {
-                filteredReports = filteredReports.filter(
-                    (report) => (report.examResult?.percentage || 0) <= Number.parseInt(filters.maxScore),
-                )
-            }
-
-            // Paginación local
-            const startIndex = (filters.page - 1) * filters.limit
-            const endIndex = startIndex + filters.limit
-            const paginatedReports = filteredReports.slice(startIndex, endIndex)
-
-            setReports(paginatedReports)
-            setPagination({
-                total: filteredReports.length,
-                pages: Math.ceil(filteredReports.length / filters.limit),
-                currentPage: filters.page,
-            })
+            setReports(reportData);
+            setPagination(paginationData);
         } catch (error) {
-            setError("Error cargando reportes")
-            console.error("Error:", error)
+            setError("Error cargando reportes");
+            console.error("Error:", error);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
     }
 
     const loadPersonalStats = async () => {
         try {
-            const data = await studentService.getPersonalStats()
-            setStats(data.stats || stats)
+            const { success, stats: statsData } = await studentService.getPersonalStats();
+            if (success) {
+                setStats(statsData);
+            }
         } catch (error) {
-            console.error("Error cargando estadísticas:", error)
+            console.error("Error cargando estadísticas:", error);
         }
     }
 
