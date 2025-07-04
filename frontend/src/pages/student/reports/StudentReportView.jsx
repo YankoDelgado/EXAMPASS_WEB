@@ -5,21 +5,30 @@ import { studentService } from "../../../services/studentService"
 
 const StudentReportView = () => {
     const navigate = useNavigate()
-    const { reportId } = useParams()
+    const { examResultId } = useParams()
     const [report, setReport] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
 
-    useEffect(() => {loadReport()}, [reportId])
+    useEffect(() => {loadReport()}, [examResultId])
+
+    useEffect(() => {
+        console.log("Report ID:", examResultId); 
+        loadReport();
+    }, [examResultId]);
 
     const loadReport = async () => {
         try {
             setLoading(true)
             setError("")
-            const data = await studentService.getReport(reportId)
+            console.log("Fetching report with ID:", examResultId); 
+            const data = await studentService.getReport(examResultId)
+            console.log("Received report data:", data); 
             setReport(data.report)
         } catch (error) {
             console.error("Error cargando reporte:", error)
+            console.error("Error details:", error.response)
+
             if (error.response?.status === 404) {
                 setError("Reporte no encontrado")
             } else {

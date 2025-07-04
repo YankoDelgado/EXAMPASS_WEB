@@ -328,12 +328,12 @@ router.get('/check/:examResultId', authenticateToken, async (req, res) => {
 });
 
 //Obtener reporte individual
-router.get("/:examResultId", authenticateToken, async (req, res) => {
+router.get("/:reportId", authenticateToken, async (req, res) => {
     try {
-        const {examResultId} = req.params
+        const {reportId} = req.params
 
         const report = await prisma.examReport.findUnique({
-            where: {examResultId: examResultId},
+            where: {id: reportId},
             include: {
                 examResult: {
                     include: {
@@ -387,6 +387,96 @@ router.get("/:examResultId", authenticateToken, async (req, res) => {
         res.status(500).json({error:"Error interno del servidor"})
     }
 })
+
+router.get("/by-exam-result/:examResultId", authenticateToken, async (req, res) => {
+    try {
+        const { examResultId } = req.params;
+
+        // Primero verificar si existe el examResult
+        const examResult = await prisma.examResult.findUnique({
+            where: { id: examResultId },
+            select: { userId: true }
+        });
+
+        if (!examResult) {
+            return res.status(404).json({ error: "Resultado de examen no encontrado" });
+        }
+
+        // Verificar permisos (solo admin o el dueño del resultado)
+        if (req.user.role !== "ADMIN" && examResult.userId !== req.user.id) {
+            return res.status(403).json({ error: "No tienes permisos para ver este reporte" });
+        }
+
+        // Buscar el reporte asociado al examResultId
+        const report = await prisma.examReport.findUnique({
+            where: { examResultId: examResultId },
+            include: {
+                examResult: {
+                    include: {
+                        user: {
+                            select: {
+                                name: true,
+                                email: true
+                            }
+                        },
+                        exam: {
+                            select: {
+                                title: true,
+                                description: true,
+                                timeLimit: true,
+                                passingScore: true
+                            }
+                        },
+                        answers: {
+                            include: {
+                                question: {
+                                    select: {
+                                        header: true,
+                                        alternatives: true,
+                                        correctAnswer: true,
+                                        educationalIndicator: true,
+                                        professor: {
+                                            select: {
+                                                name: true,
+                                                subject: true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!report) {
+            return res.status(404).json({ error: "Reporte no encontrado para este resultado de examen" });
+        }
+
+        // Procesar los datos para generar el reporte estructurado
+        const processedReport = {
+            id: report.id,
+            examResult: {
+                ...report.examResult,
+                percentage: Math.round((report.examResult.totalScore / report.examResult.totalQuestions) * 100),
+                completedAt: report.examResult.completedAt.toISOString()
+            },
+            contentBreakdown: report.contentBreakdown,
+            strengths: report.strengths,
+            weaknesses: report.weaknesses,
+            recommendations: report.recommendations,
+            assignedProfessor: report.assignedProfessor,
+            professorSubject: report.professorSubject
+        };
+
+        res.json({ report: processedReport });
+
+    } catch (error) {
+        console.error("Error obteniendo reporte por examResultId:", error);
+        res.status(500).json({ error: "Error interno del servidor" });
+    }
+});
 
 //Obtener mis reportes (estudiantes)
 router.get("/my/reports", authenticateToken, requireStudent, async (req, res) => {
