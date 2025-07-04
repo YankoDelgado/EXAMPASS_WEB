@@ -109,7 +109,7 @@ const ExamResult = () => {
     }
 
     const isPassed = (percentage) => {
-        return percentage >= (examResult?.exam?.passingScore || 60)
+        return percentage >= 60
     }
 
     const formatDuration = (seconds) => {
@@ -212,7 +212,7 @@ const ExamResult = () => {
                 <Card.Body className="text-center py-5">
                 {/* Puntaje animado */}
                 <div className="mb-4">
-                    <div className="display-1 fw-bold text-primary mb-2">{showScore ? `${animatedScore}%` : "..."}</div>
+                    <div className="display-1 fw-bold text-primary mb-2">{`${examResult.porcentage}%` || "..."}</div>
                     <h4 className={`text-${getScoreColor(examResult.percentage)}`}>
                     {showScore && getScoreMessage(examResult.percentage)}
                     </h4>
@@ -293,13 +293,6 @@ const ExamResult = () => {
                     Ver Reporte Detallado
                     </Button>
 
-                    {!isPassed(examResult.percentage) && (
-                    <Button variant="warning" size="lg" onClick={handleRetakeExam} className="px-4">
-                        <i className="bi bi-arrow-clockwise me-2"></i>
-                        Intentar de Nuevo
-                    </Button>
-                    )}
-
                     <Button variant="outline-secondary" size="lg" onClick={handleBackToDashboard} className="px-4">
                     <i className="bi bi-house me-2"></i>
                     Volver al Dashboard
@@ -336,11 +329,7 @@ const ExamResult = () => {
                     <Col md={6}>
                     <div className="mb-2">
                         <strong className="text-muted">Tiempo límite:</strong>
-                        <div>{examResult.exam?.timeLimit} minutos</div>
-                    </div>
-                    <div className="mb-2">
-                        <strong className="text-muted">Puntaje mínimo:</strong>
-                        <div>{examResult.exam?.passingScore || 60}%</div>
+                        <div>{exam.timeLimit ? `${exam.timeLimit} minutos` : "Sin tiempo límite"}</div>
                     </div>
                     <div className="mb-2">
                         <strong className="text-muted">Estado:</strong>
