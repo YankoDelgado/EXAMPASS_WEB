@@ -70,11 +70,58 @@ export const studentService = {
     // Obtener estadísticas personales
     getPersonalStats: async () => {
         try {
-            const response = await API.get("/student/statistics")
-            return response.data
+            const response = await API.get("/student/my/reports");
+            
+            // Asegurar estructura consistente incluso si hay errores en el backend
+            if (!response.data?.stats) {
+                throw new Error("Estructura de respuesta inválida");
+            }
+
+            return {
+                success: true,
+                stats: {
+                    totalReports: response.data.stats.totalReports || 0,
+                    averageScore: response.data.stats.averageScore || 0,
+                    bestScore: response.data.stats.bestScore || 0,
+                    lastExamDate: response.data.stats.lastExamDate || null,
+                    improvementTrend: response.data.stats.improvementTrend || "stable",
+                    subjectPerformance: response.data.stats.subjectPerformance || [],
+                    lastExam: response.data.stats.lastExam || {
+                        score: 0,
+                        correctAnswers: 0,
+                        totalQuestions: 0,
+                        strengths: [],
+                        weaknesses: [],
+                        recommendations: [],
+                        professor: null
+                    }
+                }
+            };
         } catch (error) {
-            console.error("Error obteniendo estadísticas:", error)
-            throw error
+            console.error("Error obteniendo estadísticas:", error);
+            
+            // Devuelve una estructura vacía pero consistente
+            return {
+                success: false,
+                stats: {
+                    totalReports: 0,
+                    averageScore: 0,
+                    bestScore: 0,
+                    lastExamDate: null,
+                    improvementTrend: "stable",
+                    subjectPerformance: [],
+                    lastExam: {
+                        score: 0,
+                        correctAnswers: 0,
+                        totalQuestions: 0,
+                        strengths: [],
+                        weaknesses: [],
+                        recommendations: [],
+                        professor: null
+                    }
+                },
+                error: error.response?.data?.error || "Error al obtener estadísticas"
+            };
         }
-    },
+    }
 }
