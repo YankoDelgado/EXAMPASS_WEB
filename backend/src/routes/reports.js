@@ -328,152 +328,55 @@ router.get('/check/:examResultId', authenticateToken, async (req, res) => {
 });
 
 //Obtener reporte individual
-router.get("/:reportId", authenticateToken, async (req, res) => {
+router.get("/:identifier", authenticateToken, async (req, res) => {
     try {
-        const {reportId} = req.params
+        const { identifier } = req.params;
+        const userId = req.user.id;
+        const isAdmin = req.user.role === "ADMIN";
 
-        const report = await prisma.examReport.findUnique({
-            where: {id: reportId},
+        // Buscar por ID de reporte primero
+        let report = await prisma.examReport.findUnique({
+            where: { id: identifier },
             include: {
                 examResult: {
                     include: {
-                        user: {
-                            select: {
-                                name: true,
-                                email: true
-                            }
-                        },
-                        exam: {
-                            select: {
-                                title: true,
-                                description: true
-                            }
-                        },
-                        answers: {
-                            include: {
-                                question: {
-                                    select: {
-                                        header: true,
-                                        alternatives: true,
-                                        correctAnswer: true,
-                                        educationalIndicator: true,
-                                        professor: {
-                                            select: {
-                                                name: true,
-                                                subject: true
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        })
-
-        if(!report) {
-            return res.status(404).json({error:"Reporte no encontrado"})
-        }
-
-        //Verificar permisos
-        if(req.user.role !== "ADMIN" && report.examResult.user.email !== req.user.email) {
-            return res.status(403).json({error:"No tienes permisos para ver este reporte"})
-        }
-
-        res.json({report: report})
-    } catch (error) {
-        console.error("Error obteniendo reporte:", error)
-        res.status(500).json({error:"Error interno del servidor"})
-    }
-})
-
-router.get("/by-exam-result/:examResultId", authenticateToken, async (req, res) => {
-    try {
-        const { examResultId } = req.params;
-
-        // Primero verificar si existe el examResult
-        const examResult = await prisma.examResult.findUnique({
-            where: { id: examResultId },
-            select: { userId: true }
-        });
-
-        if (!examResult) {
-            return res.status(404).json({ error: "Resultado de examen no encontrado" });
-        }
-
-        // Verificar permisos (solo admin o el dueño del resultado)
-        if (req.user.role !== "ADMIN" && examResult.userId !== req.user.id) {
-            return res.status(403).json({ error: "No tienes permisos para ver este reporte" });
-        }
-
-        // Buscar el reporte asociado al examResultId
-        const report = await prisma.examReport.findUnique({
-            where: { examResultId: examResultId },
-            include: {
-                examResult: {
-                    include: {
-                        user: {
-                            select: {
-                                name: true,
-                                email: true
-                            }
-                        },
-                        exam: {
-                            select: {
-                                title: true,
-                                description: true,
-                                timeLimit: true,
-                                passingScore: true
-                            }
-                        },
-                        answers: {
-                            include: {
-                                question: {
-                                    select: {
-                                        header: true,
-                                        alternatives: true,
-                                        correctAnswer: true,
-                                        educationalIndicator: true,
-                                        professor: {
-                                            select: {
-                                                name: true,
-                                                subject: true
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        user: true,
+                        exam: true,
+                        answers: true
                     }
                 }
             }
         });
+
+        // Si no se encuentra, buscar por examResultId
+        if (!report) {
+            report = await prisma.examReport.findUnique({
+                where: { examResultId: identifier },
+                include: {
+                    examResult: {
+                        include: {
+                            user: true,
+                            exam: true,
+                            answers: true
+                        }
+                    }
+                }
+            });
+        }
 
         if (!report) {
-            return res.status(404).json({ error: "Reporte no encontrado para este resultado de examen" });
+            return res.status(404).json({ error: "Reporte no encontrado" });
         }
 
-        // Procesar los datos para generar el reporte estructurado
-        const processedReport = {
-            id: report.id,
-            examResult: {
-                ...report.examResult,
-                percentage: Math.round((report.examResult.totalScore / report.examResult.totalQuestions) * 100),
-                completedAt: report.examResult.completedAt.toISOString()
-            },
-            contentBreakdown: report.contentBreakdown,
-            strengths: report.strengths,
-            weaknesses: report.weaknesses,
-            recommendations: report.recommendations,
-            assignedProfessor: report.assignedProfessor,
-            professorSubject: report.professorSubject
-        };
+        // Verificar permisos
+        if (!isAdmin && report.examResult.userId !== userId) {
+            return res.status(403).json({ error: "No autorizado" });
+        }
 
-        res.json({ report: processedReport });
-
+        // Formatear respuesta
+        res.json({ report });
     } catch (error) {
-        console.error("Error obteniendo reporte por examResultId:", error);
+        console.error("Error obteniendo reporte:", error);
         res.status(500).json({ error: "Error interno del servidor" });
     }
 });

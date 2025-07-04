@@ -193,13 +193,23 @@ export const studentService = {
     },
 
     // Obtener reporte específico
-    getReport: async (reportId) => {
+    getReport: async (identifier) => {
         try {
-            const response = await API.get(`/reports/${reportId}`)
-            return response.data
+            // Validación del identificador
+            if (!identifier || typeof identifier !== 'string') {
+                throw new Error('Identificador de reporte no válido');
+            }
+
+            const response = await API.get(`/reports/${identifier}`);
+            
+            if (!response.data?.report) {
+                throw new Error('Estructura de respuesta inválida');
+            }
+
+            return response.data;
         } catch (error) {
-            console.error("Error obteniendo reporte:", error)
-            throw error
+            console.error(`Error obteniendo reporte ${identifier}:`, error);
+            throw error;
         }
     },
 
