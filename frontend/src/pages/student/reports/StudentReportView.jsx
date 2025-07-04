@@ -6,6 +6,7 @@ import { studentService } from "../../../services/studentService"
 const StudentReportView = () => {
     const navigate = useNavigate();
     const params = useParams();
+    const [loading, setLoading] = useState(true);
     
     // Debug: Verificar todos los parámetros
     console.log("Parámetros de ruta:", params);
