@@ -70,7 +70,7 @@ export const studentService = {
     // Obtener estadísticas personales
     getPersonalStats: async () => {
         try {
-            const response = await API.get("/student/my/reports");
+            const response = await API.get("/reports/my/reports");
             
             // Asegurar estructura consistente incluso si hay errores en el backend
             if (!response.data?.stats) {
