@@ -61,6 +61,41 @@ const ExamResult = () => {
     }, [examId, location.state]);
 
     useEffect(() => {
+        const generateAutoReport = async () => {
+            if (!examResult || reportGenerationAttempted || generatingReport) return;
+            
+            try {
+                setReportGenerationAttempted(true);
+                setGeneratingReport(true);
+                
+                // Verificar si ya existe reporte
+                const reportCheck = await studentService.checkExistingReport(examResult.id);
+                
+                if (!reportCheck.exists) {
+                    // Generar nuevo reporte solo si no existe
+                    const generationResult = await studentService.generateReport(examResult.id);
+                    
+                    if (generationResult.success) {
+                        setReportGenerated(true);
+                        showNotification("Reporte generado automáticamente", "success");
+                    } else {
+                        showNotification(generationResult.message || "El reporte no pudo generarse", "warning");
+                    }
+                } else {
+                    setReportGenerated(true);
+                }
+            } catch (error) {
+                console.error("Error generando reporte:", error);
+                showNotification("Error al generar el reporte automáticamente", "danger");
+            } finally {
+                setGeneratingReport(false);
+            }
+        };
+
+        generateAutoReport();
+    }, [examResult, reportGenerationAttempted, generatingReport]);
+
+    useEffect(() => {
         if (examResult && showScore) {
             // Animar el puntaje
             const targetScore = examResult.percentage
