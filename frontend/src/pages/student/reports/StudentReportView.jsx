@@ -68,10 +68,6 @@ const StudentReportView = () => {
         }
     }
 
-    console.log("Título del examen:", report.examResult.exam.title);
-    console.log("Descripción:", report.examResult.exam.description);
-
-
     const getScoreColor = (percentage) => {
         if (percentage >= 90) return "success"
         if (percentage >= 80) return "info"
