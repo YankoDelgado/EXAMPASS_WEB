@@ -11,6 +11,7 @@ const StudentReportView = () => {
     const { reportId } = useParams();
     
     // Debug: Verificar todos los parámetros
+    const params = useParams()
     console.log("Parámetros de ruta:", params);
     
     // Validación inmediata
