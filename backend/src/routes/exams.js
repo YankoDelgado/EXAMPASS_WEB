@@ -543,7 +543,6 @@ router.post("/results/:resultId/submit", authenticateToken, requireStudent, asyn
                     select: {
                         title: true,
                         description: true,
-                        passingScore: true
                     }
                 },
                 answers: true
