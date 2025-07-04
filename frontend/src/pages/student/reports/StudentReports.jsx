@@ -57,7 +57,7 @@ const StudentReports = () => {
             console.error("Error:", error);
         } finally {
             setLoading(false);
-        }
+        } 
     }
 
     const loadPersonalStats = async () => {
