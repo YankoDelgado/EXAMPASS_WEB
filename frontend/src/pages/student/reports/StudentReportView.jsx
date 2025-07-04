@@ -12,8 +12,10 @@ const StudentReportView = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     
-    
-    // Debug: Verificar todos los parámetros
+    const getSafeText = (value, fallback = "Texto no disponible") => {
+        if (!value) return fallback;
+        return typeof value === "object" ? value.es || fallback : value;
+    };
     
     console.log("Parámetros de ruta:", params);
     
@@ -65,6 +67,10 @@ const StudentReportView = () => {
             setLoading(false);
         }
     }
+
+    console.log("Título del examen:", data.report.examResult.exam.title);
+    console.log("Descripción:", data.report.examResult.exam.description);
+
 
     const getScoreColor = (percentage) => {
         if (percentage >= 90) return "success"
@@ -144,7 +150,7 @@ const StudentReportView = () => {
         <div className="d-flex justify-content-between align-items-center mb-4">
             <div>
             <h1>Reporte Detallado</h1>
-            <p className="text-muted">{report.examResult?.exam?.title}</p>
+            <p className="text-muted">{getSafeText(report.examResult?.exam?.title)}</p>
             </div>
             <div className="d-flex gap-2">
             <Button variant="outline-primary" onClick={() => navigate("/student/exam")}>
@@ -399,7 +405,7 @@ const StudentReportView = () => {
                     </div>
                     <div className="mb-2">
                         <strong className="text-muted">Descripción:</strong>
-                        <div>{report.examResult?.exam?.description || "Sin descripción"}</div>
+                        <div>{getSafeText(report.examResult?.exam?.description, "Sin descripción")}</div>
                     </div>
                     <div className="mb-2">
                         <strong className="text-muted">Fecha de realización:</strong>
