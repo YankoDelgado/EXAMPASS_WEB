@@ -14,12 +14,20 @@ const ExamResult = () => {
     const [generatingReport, setGeneratingReport] = useState(false)
     const [reportGenerated, setReportGenerated] = useState(false)
     const [reportGenerationAttempted, setReportGenerationAttempted] = useState(false);
+    const [notification, setNotification] = useState({ show: false, message: "", variant: "info" });
 
     // Estados para animaciones
     const [showScore, setShowScore] = useState(false)
     const [animatedScore, setAnimatedScore] = useState(0)
 
     const autoSubmitted = location.state?.autoSubmitted || false
+
+    const showNotification = (message, variant = "info", duration = 5000) => {
+        setNotification({ show: true, message, variant });
+        if (duration) {
+            setTimeout(() => setNotification({ ...notification, show: false }), duration);
+        }
+    };
 
     useEffect(() => {
         const loadResult = async () => {
