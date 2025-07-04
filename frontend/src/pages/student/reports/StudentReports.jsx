@@ -35,34 +35,6 @@ const StudentReports = () => {
         improvementTrend: "stable",
     })
 
-    const generateReport = async () => {
-        try {
-            setGeneratingReport(true);
-            const result = await studentService.generateReport(examResult.id);
-            
-            if (result.success) {
-                setReportGenerated(true);
-                // Opcional: guardar el reporte en el estado si lo necesitas
-                // setGeneratedReport(result.report);
-                
-                // Mostrar notificación de éxito
-                toast.success(result.message);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            toast.error(error.message || 'Error generando reporte');
-        } finally {
-            setGeneratingReport(false);
-        }
-    };
-
-    // Llamar esta función cuando sea necesario (ej. al montar el componente o al ver resultados)
-    useEffect(() => {
-        if (examResult && !reportGenerated) {
-            generateReport();
-        }
-    }, [examResult, reportGenerated]);
-
     useEffect(() => {
         loadReports()
         loadPersonalStats()
