@@ -4,14 +4,17 @@ import { useNavigate, useParams } from "react-router-dom"
 import { studentService } from "../../../services/studentService"
 
 const StudentReportView = () => {
+    const params = useParams()
+    const { reportId } = useParams();
+    const navigate = useNavigate();
+    
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const navigate = useNavigate();
-    const { reportId } = useParams();
+    
     
     // Debug: Verificar todos los parámetros
-    const params = useParams()
+    
     console.log("Parámetros de ruta:", params);
     
     // Validación inmediata
