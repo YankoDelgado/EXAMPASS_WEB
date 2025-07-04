@@ -74,7 +74,23 @@ const ExamTaking = () => {
         initializeExam();
     }, [examId]);
 
-    
+    const handleAutoSubmit = useCallback(async () => {
+        if (examData?.exam?.timeLimit) {
+            try {
+                const result = await examService.submitExam(examResultId);
+                navigate(`/student/exam/${examId}/result`, {
+                    state: {
+                        examResult: result.examResult,
+                        autoSubmitted: true,
+                    },
+                    replace: true,
+                });
+            } catch (error) {
+                console.error("Error en auto-envío:", error);
+                setError("El tiempo se agotó y hubo un error enviando el examen.");
+            }
+        }
+    }, [examId, navigate, examResultId, examData])
 
     // Timer del examen
     useEffect(() => {
@@ -161,24 +177,6 @@ const ExamTaking = () => {
             setSubmitModal(false)
         }
     }
-
-    const handleAutoSubmit = useCallback(async () => {
-        if (examData?.exam?.timeLimit) {
-            try {
-                const result = await examService.submitExam(examResultId);
-                navigate(`/student/exam/${examId}/result`, {
-                    state: {
-                        examResult: result.examResult,
-                        autoSubmitted: true,
-                    },
-                    replace: true,
-                });
-            } catch (error) {
-                console.error("Error en auto-envío:", error);
-                setError("El tiempo se agotó y hubo un error enviando el examen.");
-            }
-        }
-    }, [examId, navigate, examResultId, examData])
 
     const formatTime = (seconds) => {
         const hours = Math.floor(seconds / 3600)
