@@ -4,69 +4,121 @@ import { useNavigate, useParams } from "react-router-dom"
 import { studentService } from "../../../services/studentService"
 
 const StudentReportView = () => {
-    const params = useParams()
     const { reportId } = useParams();
     const navigate = useNavigate();
     
-    const [report, setReport] = useState(null);
+
+    const [report, setReport] = useState({
+        id: '',
+        examResult: {
+            percentage: 0,
+            totalScore: 0,
+            totalQuestions: 0,
+            completedAt: new Date().toISOString(),
+            exam: {
+                title: 'Cargando...',
+                description: '',
+                timeLimit: 0,
+                passingScore: 60
+            }
+        },
+        contentBreakdown: {},
+        strengths: [],
+        weaknesses: [],
+        recommendations: []
+    });
+
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    
-    const getSafeText = (value, fallback = "Texto no disponible") => {
-        if (!value) return fallback;
-        return typeof value === "object" ? value.es || fallback : value;
+    const [error, setError] = useState(null);
+
+
+    const getSafeText = (value, fallback = "No disponible") => {
+        return value || fallback;
     };
-    
-    console.log("Parámetros de ruta:", params);
-    
-    // Validación inmediata
+
     useEffect(() => {
-        console.log("Report ID al cargar:", reportId);
-        
-        if (!reportId) {
-            console.error("Error: No se recibió reportId en la URL");
-            navigate("/student/reports", {
-                state: { error: "ID de reporte no proporcionado" }
-            });
-            return;
-        }
-        
-        loadReport();
-    }, [reportId, navigate]);
+    let isMounted = true; 
 
     const loadReport = async () => {
         try {
-            console.log("Cargando reporte con ID:", reportId); // Debug
+            console.log("Cargando reporte con ID:", reportId);
             
-            if (!reportId || typeof reportId !== "string") {
-                throw new Error("Identificador de reporte no válido");
+            // Validación más completa del ID
+            if (!reportId?.match(/^[a-zA-Z0-9-_]+$/)) {
+                throw new Error("Formato de ID de reporte no válido");
             }
 
             const data = await studentService.getReport(reportId);
             
-            if (!data?.report) {
-                throw new Error("El reporte no contiene datos válidos");
+            // Validación exhaustiva de la respuesta
+            if (!data?.report || 
+                !data.report.id || 
+                !data.report.examResult || 
+                typeof data.report.examResult.percentage !== 'number') {
+                throw new Error("Estructura de datos del reporte inválida");
             }
-            
-            setReport(data.report);
+
+            // Solo actualiza el estado si el componente sigue montado
+            if (isMounted) {
+                setReport({
+                    // Valores por defecto
+                    id: data.report.id,
+                    contentBreakdown: data.report.contentBreakdown || {},
+                    strengths: data.report.strengths || [],
+                    weaknesses: data.report.weaknesses || [],
+                    recommendations: data.report.recommendations || [],
+                    assignedProfessor: data.report.assignedProfessor || null,
+                    professorSubject: data.report.professorSubject || null,
+                    examResult: {
+                        percentage: data.report.examResult.percentage || 0,
+                        totalScore: data.report.examResult.totalScore || 0,
+                        totalQuestions: data.report.examResult.totalQuestions || 0,
+                        completedAt: data.report.examResult.completedAt || new Date().toISOString(),
+                        exam: {
+                            title: data.report.examResult.exam?.title || 'Examen',
+                            description: data.report.examResult.exam?.description || '',
+                            timeLimit: data.report.examResult.exam?.timeLimit || 0,
+                            passingScore: data.report.examResult.exam?.passingScore || 60
+                        }
+                    }
+                });
+            }
             
         } catch (error) {
             console.error("Error cargando reporte:", {
                 error: error.message,
                 reportId,
-                stack: error.stack
+                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
             });
             
-            setError(error.message);
-            
-            // Redirigir si es un error crítico
-            if (error.message.includes("no válido")) {
-                navigate("/student/reports");
+            if (isMounted) {
+                setError(error.message || "Error desconocido al cargar el reporte");
+                
+                // Redirigir para varios tipos de errores
+                if (error.message.match(/no válido|inválida|no encontrado/i)) {
+                    navigate("/student/reports", {
+                        state: { 
+                            error: error.message,
+                            reportId 
+                        },
+                        replace: true
+                    });
+                }
             }
         } finally {
-            setLoading(false);
+            if (isMounted) {
+                setLoading(false);
+            }
         }
-    }
+    };
+
+    loadReport();
+
+    // Función de limpieza
+    return () => {
+        isMounted = false;
+    };
+}, [reportId, navigate]); 
 
     const getScoreColor = (percentage) => {
         if (percentage >= 90) return "success"
