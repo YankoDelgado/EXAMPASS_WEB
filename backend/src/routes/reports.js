@@ -273,33 +273,40 @@ router.get("/my/reports", authenticateToken, requireStudent, async (req, res) =>
         const userId = req.user.id;
         const { search, dateFrom, dateTo, minScore, maxScore, page = 1, limit = 10 } = req.query;
 
-        // Construir condiciones WHERE
+        // Log para diagnóstico
+        console.log(`Buscando reportes para usuario ${userId} con filtros:`, {
+            search, dateFrom, dateTo, minScore, maxScore, page, limit
+        });
+
+        // Construir condiciones WHERE mejoradas
         const where = {
-            examResult: { userId },
-            ...(search && {
-                examResult: {
+            examResult: { 
+                userId,
+                ...(search && {
                     exam: {
                         title: { contains: search, mode: 'insensitive' }
                     }
-                }
-            }),
-            ...(dateFrom && {
-                createdAt: { gte: new Date(dateFrom) }
-            }),
-            ...(dateTo && {
-                createdAt: { lte: new Date(dateTo) }
-            }),
-            ...((minScore || maxScore) && {
-                examResult: {
+                }),
+                ...((minScore || maxScore) && {
                     percentage: {
                         ...(minScore && { gte: Number(minScore) }),
                         ...(maxScore && { lte: Number(maxScore) })
                     }
+                })
+            },
+            ...(dateFrom && {
+                examResult: {
+                    completedAt: { gte: new Date(dateFrom) }
+                }
+            }),
+            ...(dateTo && {
+                examResult: {
+                    completedAt: { lte: new Date(dateTo) }
                 }
             })
         };
 
-        // Obtener reportes con paginación
+        // Consulta principal mejorada
         const [reports, total] = await prisma.$transaction([
             prisma.examReport.findMany({
                 where,
@@ -308,41 +315,43 @@ router.get("/my/reports", authenticateToken, requireStudent, async (req, res) =>
                         include: {
                             exam: {
                                 select: {
+                                    id: true,
                                     title: true,
                                     description: true
                                 }
+                            },
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true
+                                }
                             }
                         }
-                    }
+                    },
+                    assignedProfessor: true
                 },
-                orderBy: { createdAt: 'desc' },
-                skip: (Number(page) - 1) * Number(limit), 
+                orderBy: { 
+                    examResult: {
+                        completedAt: 'desc' 
+                    } 
+                },
+                skip: (Number(page) - 1) * Number(limit),
                 take: Number(limit)
             }),
             prisma.examReport.count({ where })
         ]);
 
-        // Calcular estadísticas (sin filtros para que sean globales)
-        const allReports = await prisma.examReport.findMany({
-            where: { examResult: { userId } },
-            include: {
-                examResult: {
-                    select: {
-                        percentage: true,
-                        completedAt: true
-                    }
-                }
-            }
-        });
+        console.log(`Reportes encontrados: ${reports.length} de ${total} totales`);
 
-        const stats = calculateStats(allReports);
+        // Calcular estadísticas mejoradas
+        const stats = await calculateEnhancedStats(userId);
 
         res.json({
             success: true,
             reports,
             pagination: {
                 total,
-                pages: Math.ceil(total / limit),
+                pages: Math.ceil(total / Number(limit)),
                 currentPage: Number(page),
                 limit: Number(limit)
             },
@@ -350,41 +359,73 @@ router.get("/my/reports", authenticateToken, requireStudent, async (req, res) =>
         });
 
     } catch (error) {
-        console.error("Error obteniendo reportes:", error);
+        console.error("Error en /my/reports:", {
+            message: error.message,
+            stack: error.stack,
+            query: req.query,
+            user: req.user
+        });
         res.status(500).json({
             success: false,
-            error: "Error interno del servidor"
+            error: "Error interno del servidor",
+            details: process.env.NODE_ENV === "development" ? error.message : undefined
         });
     }
 });
 
-function calculateStats(reports) {
-    const stats = {
-        totalReports: reports.length,
-        averageScore: 0,
-        bestScore: 0,
-        lastExamDate: null,
-        improvementTrend: "stable",
-        subjectPerformance: []
-    };
-
-    if (reports.length > 0) {
-        const percentages = reports.map(r => r.examResult.percentage);
-        stats.averageScore = percentages.reduce((a, b) => a + b, 0) / percentages.length;
-        stats.bestScore = Math.max(...percentages);
-        stats.lastExamDate = reports[0].examResult.completedAt;
-
-        if (reports.length >= 2) {
-            const [last, previous] = reports;
-            stats.improvementTrend = last.examResult.percentage > previous.examResult.percentage 
-                ? "improving" 
-                : last.examResult.percentage < previous.examResult.percentage 
-                    ? "declining" 
-                    : "stable";
+// Función para calcular estadísticas
+async function calculateEnhancedStats(userId) {
+    const results = await prisma.examResult.findMany({
+        where: { userId },
+        select: {
+            percentage: true,
+            completedAt: true,
+            exam: {
+                select: {
+                    id: true,
+                    title: true
+                }
+            }
+        },
+        orderBy: {
+            completedAt: 'desc'
         }
+    });
+
+    if (results.length === 0) {
+        return {
+            totalReports: 0,
+            averageScore: 0,
+            bestScore: 0,
+            lastExamDate: null,
+            improvementTrend: "stable",
+            subjectPerformance: []
+        };
     }
 
-    return stats;
+    const percentages = results.map(r => r.percentage);
+    const averageScore = percentages.reduce((a, b) => a + b, 0) / percentages.length;
+    const bestScore = Math.max(...percentages);
+    const lastExamDate = results[0].completedAt;
+
+    // Calcular tendencia (últimos 2 exámenes)
+    let improvementTrend = "stable";
+    if (results.length >= 2) {
+        const [last, previous] = results;
+        improvementTrend = last.percentage > previous.percentage ? "improving" : last.percentage < previous.percentage ? "declining" : "stable";
+    }
+
+    return {
+        totalReports: results.length,
+        averageScore,
+        bestScore,
+        lastExamDate,
+        improvementTrend,
+        lastExam: {
+            title: results[0].exam.title,
+            score: results[0].percentage
+        }
+    };
 }
 
 //Estadísticas generales (solo admins)
