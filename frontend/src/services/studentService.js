@@ -159,6 +159,16 @@ export const studentService = {
         }
     },
 
+    checkExistingReport: async (examResultId) => {
+        try {
+            const response = await API.get(`/reports/check/${examResultId}`);
+            return { exists: response.data.exists };
+        } catch (error) {
+            console.error("Error checking report:", error);
+            return { exists: false };
+        }
+    },
+
     // Obtener reporte específico
     getReport: async (reportId) => {
         try {

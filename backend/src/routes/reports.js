@@ -279,6 +279,54 @@ function formatReportResponse(report, examResult) {
     };
 }
 
+router.get('/check/:examResultId', authenticateToken, async (req, res) => {
+    try {
+        const { examResultId } = req.params;
+        const userId = req.user.id; // Asumiendo que usas autenticación
+
+        // 1. Verificar si el resultado de examen existe y pertenece al usuario
+        const examResult = await prisma.examResult.findUnique({
+            where: { id: examResultId },
+            select: { userId: true }
+        });
+
+        if (!examResult) {
+            return res.status(404).json({ 
+                error: "Resultado de examen no encontrado",
+                exists: false
+            });
+        }
+
+        // 2. Verificar permisos (solo el dueño o admin puede ver)
+        if (examResult.userId !== userId && req.user.role !== 'ADMIN') {
+            return res.status(403).json({ 
+                error: "No autorizado para ver este reporte",
+                exists: false
+            });
+        }
+
+        // 3. Buscar reporte existente
+        const existingReport = await prisma.examReport.findFirst({
+            where: { examResultId },
+            select: { id: true }
+        });
+
+        res.json({ 
+            exists: !!existingReport,
+            reportId: existingReport?.id || null,
+            examResultId
+        });
+
+    } catch (error) {
+        console.error("Error checking report existence:", error);
+        res.status(500).json({ 
+            error: "Error al verificar el reporte",
+            exists: false,
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
 //Obtener reporte individual
 router.get("/:examResultId", authenticateToken, async (req, res) => {
     try {
