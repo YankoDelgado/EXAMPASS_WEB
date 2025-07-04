@@ -114,10 +114,10 @@ export const studentService = {
 
             console.log(`[studentService] Iniciando generación de reporte para examResultId: ${examResultId}`);
             
-            const response = await API.post(`/reports/generate/${examResultId}`, null, {
+            const response = await API.post(`/reports/generate/${examResultId}`, {}, {
                 headers: {
                     'Content-Type': 'application/json',
-                    // Puedes agregar aquí otros headers necesarios
+                    
                 },
                 timeout: 30000, // 30 segundos de timeout
             });
