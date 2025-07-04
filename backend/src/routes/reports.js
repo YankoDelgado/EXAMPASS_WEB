@@ -7,204 +7,277 @@ const router = express.Router()
 //Generar reporte individual (automático después del examen)
 router.post("/generate/:examResultId", authenticateToken, async (req, res) => {
     try {
-        const {examResultId} = req.params
+        const { examResultId } = req.params;
+        const userId = req.user.id;
+        const isAdmin = req.user.role === "ADMIN";
 
-        console.log("Generando reporte para resultado:", examResultId)
+        console.log(`Iniciando generación de reporte para resultado: ${examResultId}`);
 
-        // Verificar que el resultado existe y está completado
-        const examResult = await prisma.examResult.findFirst({
-            where: {
-                id: examResultId,
-                status: "COMPLETED",
-                OR: [{ userId: req.user.id }, { user: { role: "ADMIN" } }] // Solo el dueño del resultado o admin puede generar reporte
-            },
-            include: {
-                answers: {
-                    include: {
-                        question: {
-                            include: {
-                                professor: {
-                                    select: {
-                                        name: true,
-                                        subject: true
-                                    }
+        // 1. Validar y obtener el resultado del examen
+        const examResult = await validateAndGetExamResult(examResultId, userId, isAdmin);
+        if (!examResult) {
+            return res.status(404).json({ error: "Resultado de examen no encontrado o no completado" });
+        }
+
+        // 2. Verificar si ya existe un reporte
+        if (await checkExistingReport(examResultId)) {
+            return res.status(400).json({ error: "Ya existe un reporte para este resultado" });
+        }
+
+        // 3. Analizar respuestas y generar datos del reporte
+        const { contentBreakdown, subjectBreakdown } = analyzeAnswers(examResult.answers);
+        const { strengths, weaknesses } = identifyStrengthsAndWeaknesses(contentBreakdown);
+        const recommendations = generateRecommendations(examResult.percentage, weaknesses);
+        
+        // 4. Asignar profesor si hay áreas débiles
+        const { assignedProfessor, professorSubject } = await assignProfessorForWeaknesses(
+            weaknesses, 
+            subjectBreakdown
+        );
+
+        // 5. Crear el reporte en la base de datos
+        const report = await createExamReport({
+            examResultId,
+            contentBreakdown,
+            subjectBreakdown,
+            strengths,
+            weaknesses,
+            recommendations,
+            assignedProfessor,
+            professorSubject
+        });
+
+        console.log("Reporte generado exitosamente:", report.id);
+
+        // 6. Retornar respuesta estructurada
+        res.status(201).json(formatReportResponse(report, examResult));
+
+    } catch (error) {
+        console.error("Error generando reporte:", error);
+        res.status(500).json({
+            error: "Error interno del servidor",
+            details: process.env.NODE_ENV === "development" ? error.message : undefined
+        });
+    }
+});
+
+// --- Funciones auxiliares ---
+
+/**
+ * Valida y obtiene el resultado del examen
+ */
+async function validateAndGetExamResult(examResultId, userId, isAdmin) {
+    const whereClause = {
+        id: examResultId,
+        status: "COMPLETED",
+        ...(!isAdmin && { userId }) // Solo admin puede ver todos los resultados
+    };
+
+    return await prisma.examResult.findFirst({
+        where: whereClause,
+        include: {
+            answers: {
+                include: {
+                    question: {
+                        include: {
+                            professor: {
+                                select: {
+                                    name: true,
+                                    subject: true
                                 }
                             }
                         }
                     }
-                },
-                exam: true,
-                user: {
-                    select: {
-                        name: true,
-                        email: true
-                    }
+                }
+            },
+            exam: true,
+            user: {
+                select: {
+                    name: true,
+                    email: true
                 }
             }
-        })
-
-        if(!examResult) {
-            return res.status(404).json({error:"Resultado de examen no encontrado o no completado"})
         }
+    });
+}
 
-        //Verificar si ya existe un reporte
-        const existingReport = await prisma.examReport.findUnique({where: {examResultId: examResultId}})
+/**
+ * Verifica si ya existe un reporte para este resultado
+ */
+async function checkExistingReport(examResultId) {
+    return await prisma.examReport.findUnique({
+        where: { examResultId }
+    });
+}
 
-        if(existingReport) {
-            return res.status(400).json({error:"Ya existe un reporte para este resultado"})
+/**
+ * Analiza las respuestas para generar estadísticas
+ */
+function analyzeAnswers(answers) {
+    const contentAnalysis = {};
+    const subjectAnalysis = {};
+
+    answers.forEach((answer) => {
+        const indicator = answer.question.educationalIndicator || 'Sin indicador';
+        const subject = answer.question.professor?.subject || 'Sin materia';
+
+        // Análisis por indicador educativo
+        if (!contentAnalysis[indicator]) {
+            contentAnalysis[indicator] = { correct: 0, total: 0 };
         }
+        contentAnalysis[indicator].total++;
+        if (answer.isCorrect) contentAnalysis[indicator].correct++;
 
-        //Analizar respuestas por contenido educativo
-        const contentAnalysis = {}
-        const subjectAnalysis = {}
-
-        examResult.answers.forEach((answer) => {
-            const indicator = answer.question.educationalIndicator
-            const subject = answer.question.professor.subject
-
-            //Análisis por indicador educativo
-            if (!contentAnalysis[indicator]) {
-                contentAnalysis[indicator] = {correct: 0, total: 0}
-            }
-            contentAnalysis[indicator].total++
-
-            if(answer.isCorrect) {
-                contentAnalysis[indicator].correct++
-            }
-
-            //Análisis por materia
-            if(!subjectAnalysis[subject]) {
-                subjectAnalysis[subject] = {correct: 0, total: 0}
-            }
-            subjectAnalysis[subject].total++
-
-            if(answer.isCorrect) {
-                subjectAnalysis[subject].correct++
-            }
-        })
-
-        //Calcular porcentajes por contenido
-        const contentBreakdown = {}
-        Object.keys(contentAnalysis).forEach((indicator) => {
-            const {correct, total} = contentAnalysis[indicator]
-            contentBreakdown[indicator] = Math.round((correct / total) * 100)
-        })
-
-        //Calcular porcentajes por materia
-        const subjectBreakdown = {}
-        Object.keys(subjectAnalysis).forEach((subject) => {
-            const {correct, total} = subjectAnalysis[subject]
-            subjectBreakdown[subject] = Math.round((correct / total) * 100)
-        })
-
-        //Identificar fortalezas y debilidades
-        const strengths = []
-        const weaknesses = []
-
-        Object.entries(contentBreakdown).forEach(([indicator, percentage]) => {
-            if (percentage >= 80) {
-                strengths.push(indicator)
-            } else if (percentage < 60) {
-                weaknesses.push(indicator)
-            }
-        })
-
-        // Generar recomendaciones
-        const recommendations = []
-
-        if (examResult.percentage >= 90) {
-        recommendations.push("¡Excelente desempeño! Continúa con tu nivel de estudio.")
-        recommendations.push("Considera ayudar a otros estudiantes como tutor.")
-        } else if (examResult.percentage >= 70) {
-        recommendations.push("Buen desempeño general. Enfócate en las áreas identificadas como débiles.")
-        recommendations.push("Practica ejercicios adicionales en los temas con menor puntaje.")
-        } else if (examResult.percentage >= 50) {
-        recommendations.push("Necesitas reforzar varios conceptos fundamentales.")
-        recommendations.push("Considera buscar ayuda adicional o tutoría.")
-        recommendations.push("Dedica más tiempo de estudio a las materias con menor puntaje.")
-        } else {
-        recommendations.push("Se recomienda revisar los conceptos básicos desde el inicio.")
-        recommendations.push("Busca ayuda de un tutor o profesor especializado.")
-        recommendations.push("Considera un plan de estudio estructurado y personalizado.")
+        // Análisis por materia
+        if (!subjectAnalysis[subject]) {
+            subjectAnalysis[subject] = { correct: 0, total: 0 };
         }
+        subjectAnalysis[subject].total++;
+        if (answer.isCorrect) subjectAnalysis[subject].correct++;
+    });
 
-        //Recomendar profesor según área más débil
-        let assignedProfessor = null
-        let professorSubject = null
+    // Calcular porcentajes
+    const calculatePercentages = (analysis) => {
+        return Object.entries(analysis).reduce((acc, [key, { correct, total }]) => {
+            acc[key] = Math.round((correct / total) * 100);
+            return acc;
+        }, {});
+    };
 
-        if(weaknesses.length > 0) {
-            //Encontrar la materia con menor puntaje
-            const weakestSubject = Object.entries(subjectBreakdown).reduce((min, [subject, percentage]) =>
-                percentage < min.percentage ? { subject, percentage } : min
-            ).subject
+    return {
+        contentBreakdown: calculatePercentages(contentAnalysis),
+        subjectBreakdown: calculatePercentages(subjectAnalysis)
+    };
+}
 
-            //Buscar profesor de esa materia
-            const professor = await prisma.professor.findFirst({
-                where: {
-                    subject: {
-                        contains: weakestSubject,
-                        mode: "insensitive"
-                    }
-                }
-            })
+/**
+ * Identifica fortalezas y debilidades basado en los porcentajes
+ */
+function identifyStrengthsAndWeaknesses(contentBreakdown) {
+    const strengths = [];
+    const weaknesses = [];
 
-            if(professor) {
-                assignedProfessor = professor.name
-                professorSubject = professor.subject
-                recommendations.push(`Se recomienda contactar al profesor ${professor.name} especialista en ${professor.subject}.`)
-            }
+    Object.entries(contentBreakdown).forEach(([indicator, percentage]) => {
+        if (percentage >= 80) {
+            strengths.push(indicator);
+        } else if (percentage < 60) {
+            weaknesses.push(indicator);
         }
+    });
 
-        // Crear reporte
-        const report = await prisma.examReport.create({
-            data: {
-                examResultId: examResultId,
-                contentBreakdown: {
-                    ...contentBreakdown,
-                    subjects: subjectBreakdown,
-                },
-                strengths: strengths,
-                weaknesses: weaknesses,
-                recommendations: recommendations,
-                assignedProfessor: assignedProfessor,
-                professorSubject: professorSubject
-            }
-        })
+    return { strengths, weaknesses };
+}
 
-        console.log("Reporte generado:", {
-            reportId: report.id,
-            strengths: strengths.length,
-            weaknesses: weaknesses.length,
-            recommendations: recommendations.length
-        })
+/**
+ * Genera recomendaciones personalizadas
+ */
+function generateRecommendations(overallPercentage, weaknesses) {
+    const recommendations = [];
 
-        res.status(201).json({
-            message: "Reporte generado exitosamente",
-            report: {
-                id: report.id,
-                contentBreakdown: report.contentBreakdown,
-                strengths: report.strengths,
-                weaknesses: report.weaknesses,
-                recommendations: report.recommendations,
-                assignedProfessor: report.assignedProfessor,
-                professorSubject: report.professorSubject,
-                examResult: {
-                    id: examResult.id,
-                    totalScore: examResult.totalScore,
-                    totalQuestions: examResult.totalQuestions,
-                    percentage: examResult.percentage,
-                    completedAt: examResult.completedAt
-                }
-            }
-        })
-    } catch (error) {
-        console.error("Error generando reporte:", error)
-        res.status(500).json({
-            error: "Error interno del servidor",
-            details: process.env.NODE_ENV === "development" ? error.message : undefined
-        })
+    if (overallPercentage >= 90) {
+        recommendations.push("¡Excelente desempeño! Continúa con tu nivel de estudio.");
+        recommendations.push("Considera ayudar a otros estudiantes como tutor.");
+    } else if (overallPercentage >= 70) {
+        recommendations.push("Buen desempeño general. Enfócate en las áreas identificadas como débiles.");
+        recommendations.push("Practica ejercicios adicionales en los temas con menor puntaje.");
+    } else if (overallPercentage >= 50) {
+        recommendations.push("Necesitas reforzar varios conceptos fundamentales.");
+        recommendations.push("Considera buscar ayuda adicional o tutoría.");
+    } else {
+        recommendations.push("Se recomienda revisar los conceptos básicos desde el inicio.");
+        recommendations.push("Busca ayuda de un tutor o profesor especializado.");
     }
-})
+
+    // Recomendaciones específicas para áreas débiles
+    if (weaknesses.length > 0) {
+        recommendations.push(`Áreas que requieren atención especial: ${weaknesses.join(', ')}.`);
+    }
+
+    return recommendations;
+}
+
+/**
+ * Asigna profesor para áreas débiles
+ */
+async function assignProfessorForWeaknesses(weaknesses, subjectBreakdown) {
+    let assignedProfessor = null;
+    let professorSubject = null;
+
+    if (weaknesses.length > 0) {
+        try {
+            const weakestSubject = Object.entries(subjectBreakdown).reduce((min, [subject, percentage]) => 
+                percentage < min.percentage ? { subject, percentage } : min,
+                { subject: null, percentage: 101 }
+            ).subject;
+
+            if (weakestSubject) {
+                const professor = await prisma.professor.findFirst({
+                    where: {
+                        subject: {
+                            contains: weakestSubject,
+                            mode: "insensitive"
+                        }
+                    }
+                });
+
+                if (professor) {
+                    assignedProfessor = professor.name;
+                    professorSubject = professor.subject;
+                }
+            }
+        } catch (error) {
+            console.error("Error asignando profesor:", error);
+            // No fallar el proceso si hay error al asignar profesor
+        }
+    }
+
+    return { assignedProfessor, professorSubject };
+}
+
+/**
+ * Crea el reporte en la base de datos
+ */
+async function createExamReport(reportData) {
+    return await prisma.examReport.create({
+        data: {
+            examResultId: reportData.examResultId,
+            contentBreakdown: {
+                indicators: reportData.contentBreakdown,
+                subjects: reportData.subjectBreakdown,
+            },
+            strengths: reportData.strengths,
+            weaknesses: reportData.weaknesses,
+            recommendations: reportData.recommendations,
+            assignedProfessor: reportData.assignedProfessor,
+            professorSubject: reportData.professorSubject
+        }
+    });
+}
+
+/**
+ * Formatea la respuesta para el cliente
+ */
+function formatReportResponse(report, examResult) {
+    return {
+        message: "Reporte generado exitosamente",
+        report: {
+            id: report.id,
+            contentBreakdown: report.contentBreakdown,
+            strengths: report.strengths,
+            weaknesses: report.weaknesses,
+            recommendations: report.recommendations,
+            assignedProfessor: report.assignedProfessor,
+            professorSubject: report.professorSubject,
+            examResult: {
+                id: examResult.id,
+                totalScore: examResult.totalScore,
+                totalQuestions: examResult.totalQuestions,
+                percentage: examResult.percentage,
+                completedAt: examResult.completedAt
+            }
+        }
+    };
+}
 
 //Obtener reporte individual
 router.get("/:examResultId", authenticateToken, async (req, res) => {
@@ -273,12 +346,7 @@ router.get("/my/reports", authenticateToken, requireStudent, async (req, res) =>
         const userId = req.user.id;
         const { search, dateFrom, dateTo, minScore, maxScore, page = 1, limit = 10 } = req.query;
 
-        // Log para diagnóstico
-        console.log(`Buscando reportes para usuario ${userId} con filtros:`, {
-            search, dateFrom, dateTo, minScore, maxScore, page, limit
-        });
-
-        // Construir condiciones WHERE mejoradas
+        // Construir condiciones WHERE
         const where = {
             examResult: { 
                 userId,
@@ -306,13 +374,27 @@ router.get("/my/reports", authenticateToken, requireStudent, async (req, res) =>
             })
         };
 
-        // Consulta principal mejorada
+        // Obtener reportes con paginación (VERSIÓN CORREGIDA)
         const [reports, total] = await prisma.$transaction([
             prisma.examReport.findMany({
                 where,
-                include: {
+                select: {  // Cambiamos de include a select para campos escalares
+                    id: true,
+                    contentBreakdown: true,
+                    strengths: true,
+                    weaknesses: true,
+                    recommendations: true,
+                    assignedProfessor: true,  // Campo escalar
+                    professorSubject: true,   // Campo escalar
+                    createdAt: true,
+                    updatedAt: true,
                     examResult: {
-                        include: {
+                        select: {
+                            id: true,
+                            percentage: true,
+                            completedAt: true,
+                            totalScore: true,
+                            totalQuestions: true,
                             exam: {
                                 select: {
                                     id: true,
@@ -327,8 +409,7 @@ router.get("/my/reports", authenticateToken, requireStudent, async (req, res) =>
                                 }
                             }
                         }
-                    },
-                    assignedProfessor: true
+                    }
                 },
                 orderBy: { 
                     examResult: {
@@ -341,9 +422,7 @@ router.get("/my/reports", authenticateToken, requireStudent, async (req, res) =>
             prisma.examReport.count({ where })
         ]);
 
-        console.log(`Reportes encontrados: ${reports.length} de ${total} totales`);
-
-        // Calcular estadísticas mejoradas
+        // Calcular estadísticas
         const stats = await calculateEnhancedStats(userId);
 
         res.json({

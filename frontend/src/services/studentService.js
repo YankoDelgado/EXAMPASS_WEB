@@ -107,11 +107,55 @@ export const studentService = {
     // Generar reporte después del examen
     generateReport: async (examResultId) => {
         try {
-            const response = await API.post(`/reports/generate/${examResultId}`)
-            return response.data
+            // Validación básica del ID
+            if (!examResultId || typeof examResultId !== 'string') {
+                throw new Error('ID de resultado de examen no válido');
+            }
+
+            console.log(`[studentService] Iniciando generación de reporte para examResultId: ${examResultId}`);
+            
+            const response = await API.post(`/reports/generate/${examResultId}`, null, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    // Puedes agregar aquí otros headers necesarios
+                },
+                timeout: 30000, // 30 segundos de timeout
+            });
+
+            if (!response.data) {
+                throw new Error('La respuesta del servidor no contiene datos');
+            }
+
+            console.log('[studentService] Reporte generado exitosamente:', response.data.report.id);
+            return {
+                success: true,
+                report: response.data.report,
+                message: response.data.message || 'Reporte generado exitosamente'
+            };
         } catch (error) {
-            console.error("Error generando reporte:", error)
-            throw error
+            console.error('[studentService] Error generando reporte:', error);
+            
+            // Personalizar mensajes de error según el tipo de error
+            let errorMessage = 'Error al generar el reporte';
+            if (error.response) {
+                // Error de respuesta del servidor (4xx, 5xx)
+                errorMessage = error.response.data?.error || `Error del servidor: ${error.response.status}`;
+            } else if (error.request) {
+                // Error de conexión (no se recibió respuesta)
+                errorMessage = 'No se pudo conectar con el servidor';
+            } else if (error.message) {
+                // Error lanzado manualmente
+                errorMessage = error.message;
+            }
+
+            // Puedes agregar más lógica aquí, como enviar el error a un servicio de monitoreo
+            
+            throw {
+                success: false,
+                message: errorMessage,
+                code: error.response?.status || 500,
+                details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            };
         }
     },
 
