@@ -514,9 +514,10 @@ const StudentReports = () => {
                                 variant="outline-primary"
                                 size="sm"
                                 onClick={() => {
-                                    console.log("Navegando a reporte con ID:", report.id); 
-                                    navigate(`/student/reports/${report.id}`)}
-                                }
+                                    console.log("ID del reporte a ver:", report.id); // Debug
+                                    console.log("ID del examResult:", report.examResult?.id); // Debug
+                                    navigate(`/student/reports/${report.id}`)
+                                }}
                             >
                                 <i className="bi bi-eye me-1"></i>
                                 Ver Reporte

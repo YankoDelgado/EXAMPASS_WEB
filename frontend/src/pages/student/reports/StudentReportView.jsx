@@ -4,38 +4,60 @@ import { useNavigate, useParams } from "react-router-dom"
 import { studentService } from "../../../services/studentService"
 
 const StudentReportView = () => {
-    const navigate = useNavigate()
-    const { examResultId } = useParams()
-    const [report, setReport] = useState(null)
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState("")
-
-    useEffect(() => {loadReport()}, [examResultId])
-
+    const navigate = useNavigate();
+    const params = useParams();
+    
+    // Debug: Verificar todos los parámetros
+    console.log("Parámetros de ruta:", params);
+    
+    const { reportId } = useParams();
+    
+    // Validación inmediata
     useEffect(() => {
-        console.log("Report ID:", examResultId); 
+        console.log("Report ID al cargar:", reportId);
+        
+        if (!reportId) {
+            console.error("Error: No se recibió reportId en la URL");
+            navigate("/student/reports", {
+                state: { error: "ID de reporte no proporcionado" }
+            });
+            return;
+        }
+        
         loadReport();
-    }, [examResultId]);
+    }, [reportId, navigate]);
 
     const loadReport = async () => {
         try {
-            setLoading(true)
-            setError("")
-            console.log("Fetching report with ID:", examResultId); 
-            const data = await studentService.getReport(examResultId)
-            console.log("Received report data:", data); 
-            setReport(data.report)
-        } catch (error) {
-            console.error("Error cargando reporte:", error)
-            console.error("Error details:", error.response)
+            console.log("Cargando reporte con ID:", reportId); // Debug
+            
+            if (!reportId || typeof reportId !== "string") {
+                throw new Error("Identificador de reporte no válido");
+            }
 
-            if (error.response?.status === 404) {
-                setError("Reporte no encontrado")
-            } else {
-                setError("Error cargando el reporte")
+            const data = await studentService.getReport(reportId);
+            
+            if (!data?.report) {
+                throw new Error("El reporte no contiene datos válidos");
+            }
+            
+            setReport(data.report);
+            
+        } catch (error) {
+            console.error("Error cargando reporte:", {
+                error: error.message,
+                reportId,
+                stack: error.stack
+            });
+            
+            setError(error.message);
+            
+            // Redirigir si es un error crítico
+            if (error.message.includes("no válido")) {
+                navigate("/student/reports");
             }
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
     }
 
