@@ -22,8 +22,8 @@ export const studentService = {
                     dateTo: filters.dateTo,
                     minScore: filters.minScore,
                     maxScore: filters.maxScore,
-                    page: filters.page,
-                    limit: filters.limit
+                    page: Number(filters.page) || 1,
+                    limit: Number(filters.limit) || 10
                 }
             };
 

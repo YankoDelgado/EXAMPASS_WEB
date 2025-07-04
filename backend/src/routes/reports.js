@@ -316,8 +316,8 @@ router.get("/my/reports", authenticateToken, requireStudent, async (req, res) =>
                     }
                 },
                 orderBy: { createdAt: 'desc' },
-                skip: (page - 1) * limit,
-                take: limit
+                skip: (Number(page) - 1) * Number(limit), 
+                take: Number(limit)
             }),
             prisma.examReport.count({ where })
         ]);
