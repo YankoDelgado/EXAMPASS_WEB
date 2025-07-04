@@ -13,6 +13,7 @@ const ExamResult = () => {
     const [error, setError] = useState("")
     const [generatingReport, setGeneratingReport] = useState(false)
     const [reportGenerated, setReportGenerated] = useState(false)
+    const [reportGenerationAttempted, setReportGenerationAttempted] = useState(false);
 
     // Estados para animaciones
     const [showScore, setShowScore] = useState(false)
