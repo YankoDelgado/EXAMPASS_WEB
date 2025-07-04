@@ -329,7 +329,7 @@ const ExamResult = () => {
                     <Col md={6}>
                     <div className="mb-2">
                         <strong className="text-muted">Tiempo límite:</strong>
-                        <div>{exam.timeLimit ? `${exam.timeLimit} minutos` : "Sin tiempo límite"}</div>
+                        <div>{examResult.timeLimit ? `${examResult.timeLimit} minutos` : "Sin tiempo límite"}</div>
                     </div>
                     <div className="mb-2">
                         <strong className="text-muted">Estado:</strong>
