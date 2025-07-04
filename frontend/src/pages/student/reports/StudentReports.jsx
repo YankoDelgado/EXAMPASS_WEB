@@ -43,17 +43,37 @@ const StudentReports = () => {
     const loadReports = async () => {
         try {
             setLoading(true);
-            const { success, reports: reportData, pagination: paginationData, error } = 
+            setError("");
+            
+            const { success, reports: reportData = [], pagination: paginationData = {}, error } = 
                 await studentService.getMyReports(filters);
 
-            if (!success) {
-                throw new Error(error || "Error cargando reportes");
-            }
+            if (!success) throw new Error(error || "Error al cargar reportes");
 
-            setReports(reportData);
-            setPagination(paginationData);
+            setReports(reportData.map(report => ({
+                ...report,
+                examResult: {
+                    percentage: report.examResult?.percentage || 0,
+                    completedAt: report.examResult?.completedAt || report.createdAt,
+                    totalQuestions: report.examResult?.totalQuestions || 0,
+                    exam: {
+                        title: report.examResult?.exam?.title || "Examen",
+                        ...report.examResult?.exam
+                    },
+                    ...report.examResult
+                }
+            })));
+
+            setPagination({
+                total: paginationData.total || 0,
+                pages: paginationData.pages || 0,
+                currentPage: paginationData.currentPage || filters.page,
+                limit: paginationData.limit || filters.limit
+            });
+
         } catch (error) {
-            setError("Error cargando reportes");
+            setError(error.message);
+            setReports([]);
             console.error("Error:", error);
         } finally {
             setLoading(false);
@@ -412,13 +432,13 @@ const StudentReports = () => {
                         {reports.map((report) => (
                         <tr key={report.id}>
                             <td>
-                            <div className="fw-medium">{report.examResult?.exam?.title || "Examen"}</div>
-                            <small className="text-muted">{report.examResult?.totalQuestions} preguntas</small>
+                            <div className="fw-medium">{report.examResult.exam.title}</div>
+                            <small className="text-muted">{report.examResult.totalQuestions} preguntas</small>
                             </td>
                             <td>
-                            <div>{formatDate(report.createdAt)}</div>
+                            <div>{formatDate(report.examResult.completedAt)}</div>
                             <small className="text-muted">
-                                {new Date(report.createdAt).toLocaleTimeString("es-ES", {
+                                {new Date(report.examResult.completedAt).toLocaleTimeString("es-ES", {
                                 hour: "2-digit",
                                 minute: "2-digit",
                                 })}
@@ -426,21 +446,21 @@ const StudentReports = () => {
                             </td>
                             <td>
                             <div className="d-flex align-items-center">
-                                <Badge bg={getScoreColor(report.examResult?.percentage || 0)} className="me-2">
-                                {report.examResult?.percentage || 0}%
+                                <Badge bg={getScoreColor(report.examResult.percentage || 0)} className="me-2">
+                                {report.examResult.percentage || 0}%
                                 </Badge>
                             </div>
                             </td>
                             <td>
-                            <Badge bg={getScoreColor(report.examResult?.percentage || 0)}>
-                                {getScoreText(report.examResult?.percentage || 0)}
+                            <Badge bg={getScoreColor(report.examResult.percentage || 0)}>
+                                {getScoreText(report.examResult.percentage || 0)}
                             </Badge>
                             </td>
                             <td>
                             <div style={{ width: "100px" }}>
                                 <ProgressBar
-                                now={report.examResult?.percentage || 0}
-                                variant={getScoreColor(report.examResult?.percentage || 0)}
+                                now={report.examResult.percentage || 0}
+                                variant={getScoreColor(report.examResult.percentage || 0)}
                                 style={{ height: "8px" }}
                                 />
                             </div>
@@ -479,8 +499,8 @@ const StudentReports = () => {
                     <Col md={6}>
                         <div className="mb-3">
                         <strong className="text-muted d-block">Último examen:</strong>
-                        <span>{reports[0]?.examResult?.exam?.title}</span>
-                        <Badge bg={getScoreColor(reports[0]?.examResult?.percentage || 0)} className="ms-2">
+                        <span>{reports[0].examResult.exam.title}</span>
+                        <Badge bg={getScoreColor(reports[0].examResult.percentage || 0)} className="ms-2">
                             {reports[0]?.examResult?.percentage || 0}%
                         </Badge>
                         </div>

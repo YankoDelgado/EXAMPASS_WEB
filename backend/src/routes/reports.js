@@ -312,14 +312,6 @@ router.get("/my/reports", authenticateToken, requireStudent, async (req, res) =>
                                     description: true
                                 }
                             }
-                        },
-                        select: {
-                            id: true,
-                            percentage: true,
-                            completedAt: true,
-                            totalScore: true,
-                            totalQuestions: true,
-                            exam: true
                         }
                     }
                 },
