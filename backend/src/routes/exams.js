@@ -493,9 +493,10 @@ router.post("/results/:resultId/answer", authenticateToken, requireStudent, asyn
 })
 
 //Finalizar examen
-router.post("/results/:resultId/finish", authenticateToken, requireStudent, async (req, res) => {
+router.post("/results/:resultId/submit", authenticateToken, requireStudent, async (req, res) => {
     try {
         const {resultId} = req.params
+        const userId = req.user.id
 
         console.log("Finalizando examen:", {resultId})
 
@@ -509,16 +510,7 @@ router.post("/results/:resultId/finish", authenticateToken, requireStudent, asyn
             include: {
                 answers: {
                     include: {
-                        question: {
-                            include: {
-                                professor: {
-                                    select: {
-                                        name: true,
-                                        subject: true
-                                    }
-                                }
-                            }
-                        }
+                        question: true
                     }
                 },
                 exam: true
@@ -526,13 +518,16 @@ router.post("/results/:resultId/finish", authenticateToken, requireStudent, asyn
         })
 
         if(!examResult) {
-            return res.status(404).json({error:"Resultado de examen no encontrado o ya completado"})
+            return res.status(404).json({
+                success: false,
+                error:"Resultado de examen no encontrado o ya completado"
+            })
         }
 
         //Calcular puntaje
-        const correctAnswers = examResult.answers.filter((answer) => answer.isCorrect).length
+        const correctAnswers = examResult.answers.filter(a => a.isCorrect).length;
         const totalQuestions = examResult.totalQuestions
-        const percentage = (correctAnswers / totalQuestions) * 100
+        const percentage = Math.round((correctAnswers / totalQuestions) * 100);
 
         //Actualizar resultado
         const updatedResult = await prisma.examResult.update({
@@ -544,27 +539,14 @@ router.post("/results/:resultId/finish", authenticateToken, requireStudent, asyn
                     completedAt: new Date()
                 },
             include: {
-                answers: {
-                    include: {
-                        question: {
-                        include: {
-                            professor: {
-                                select: {
-                                    name: true,
-                                    subject: true,
-                                },
-                            },
-                        },
-                        },
-                    },
-                },
-                user: {
+                exam: {
                     select: {
-                        name: true,
-                        email: true
+                        title: true,
+                        description: true,
+                        passingScore: true
                     }
                 },
-                exam: true
+                answers: true
             }
         })
 
@@ -575,25 +557,59 @@ router.post("/results/:resultId/finish", authenticateToken, requireStudent, asyn
         })
 
         res.json({
-            message: "Examen finalizado exitosamente",
-            result: {
-                id: updatedResult.id,
-                totalScore: updatedResult.totalScore,
-                totalQuestions: updatedResult.totalQuestions,
-                percentage: updatedResult.percentage,
-                status: updatedResult.status,
-                startedAt: updatedResult.startedAt,
-                completedAt: updatedResult.completedAt,
-                answers: updatedResult.answers,
-                exam: updatedResult.exam,
-                user: updatedResult.user
-            }
-        })
+            success: true,
+            message: "Examen enviado exitosamente",
+            examResult: updatedResult
+        });
     } catch (error) {
-        console.error("Error finalizando examen:", error)
-        res.status(500).json({error:"Error interno del servidor"})
+        console.error("Error finalizando examen:", error);
+        res.status(500).json({
+            success: false,
+            error: "Error interno del servidor"
+        });
     }
 })
+
+router.get("/:examId/latest-result", authenticateToken, requireStudent, async (req, res) => {
+    try {
+        const { examId } = req.params;
+        const userId = req.user.id;
+
+        const examResult = await prisma.examResult.findFirst({
+            where: {
+                examId: examId,
+                userId: userId,
+                status: "COMPLETED"
+            },
+            orderBy: {
+                completedAt: "desc"
+            },
+            include: {
+                exam: true,
+                answers: true
+            }
+        });
+
+        if (!examResult) {
+            return res.status(404).json({
+                success: false,
+                error: "No se encontraron resultados para este examen"
+            });
+        }
+
+        res.json({
+            success: true,
+            examResult: examResult
+        });
+
+    } catch (error) {
+        console.error("Error obteniendo último resultado:", error);
+        res.status(500).json({
+            success: false,
+            error: "Error interno del servidor"
+        });
+    }
+});
 
 //Obtener resultados del usuario actual
 router.get("/my-results", authenticateToken, requireStudent, async (req, res) => {

@@ -100,11 +100,18 @@ export const examService = {
     // Enviar examen completo
     submitExam: async (examResultId) => {
         try {
-            const response = await API.post(`/exams/results/${examResultId}/finish`);
+            const response = await API.post(`/exams/results/${examResultId}/submit`);
+
+            if (!response.data.success) {
+                return {
+                    success: false,
+                    error: response.data.error || "Error al enviar examen"
+                };
+            }
         
             return {
                 success: true,
-                result: response.data.result
+                examResult: response.data.examResult
             };
         } catch (error) {
             console.error("Error enviando examen:", error);
@@ -118,11 +125,38 @@ export const examService = {
     // Obtener resultado del examen
     getExamResult: async (examResultId) => {
         try {
-            const response = await API.get(`/exams/result/${examResultId}`)
-            return response.data
+            const response = await API.get(`/exams/results/${examResultId}`);
+        
+            return {
+                success: response.data.success,
+                examResult: response.data.examResult,
+                error: response.data.error
+            };
         } catch (error) {
-            console.error("Error obteniendo resultado:", error)
-            throw error
+            console.error("Error obteniendo resultado:", error);
+            return {
+                success: false,
+                error: error.response?.data?.error || error.message
+            };
+        }
+    },
+
+    // Obtener último resultado
+    getLatestExamResult: async (examId) => {
+        try {
+            const response = await API.get(`/exams/${examId}/latest-result`);
+            
+            return {
+                success: response.data.success,
+                examResult: response.data.examResult,
+                error: response.data.error
+            };
+        } catch (error) {
+            console.error("Error obteniendo último resultado:", error);
+            return {
+                success: false,
+                error: error.response?.data?.error || error.message
+            };
         }
     },
 

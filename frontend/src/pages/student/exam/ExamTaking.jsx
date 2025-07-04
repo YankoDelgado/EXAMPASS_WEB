@@ -164,9 +164,19 @@ const ExamTaking = () => {
             setSubmitting(true)
             const result = await examService.submitExam(examResultId)
 
+            if (!result.success) {
+                throw new Error(result.error);
+            }
             // Redirigir al resultado
             navigate(`/student/exam/${examId}/result`, {
-                state: { examResult: result.examResult },
+                state: {
+                    examResult: result.examResult,
+                    examResultId: examResultId,
+                    examData: {
+                        title: examData.exam.title,
+                        passingScore: examData.exam.passingScore
+                    },
+                },
                 replace: true,
             })
         } catch (error) {
@@ -434,7 +444,6 @@ const ExamTaking = () => {
                 <li>
                     Preguntas respondidas: {Object.keys(answers).length} de {examData.exam.questions.length}
                 </li>
-                <li>Tiempo restante: {formatTime(timeRemaining)}</li>
                 <li>Una vez enviado, no podrás hacer cambios</li>
                 </ul>
             </Alert>

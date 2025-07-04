@@ -21,12 +21,44 @@ const ExamResult = () => {
     const autoSubmitted = location.state?.autoSubmitted || false
 
     useEffect(() => {
-        if (!examResult) {
-            loadExamResult()
-        } else {
-            initializeResult()
-        }
-    }, [])
+        const loadResult = async () => {
+            try {
+                setLoading(true);
+                
+                // Opción 1: Usar datos del estado de navegación
+                if (location.state?.examResult) {
+                    setExamResult(location.state.examResult);
+                    return;
+                }
+                
+                // Opción 2: Obtener por ID si está en el estado
+                if (location.state?.examResultId) {
+                    const response = await examService.getExamResult(location.state.examResultId);
+                    if (response.success) {
+                        setExamResult(response.examResult);
+                    } else {
+                        throw new Error(response.error);
+                    }
+                    return;
+                }
+                
+                // Opción 3: Obtener el último resultado del examen
+                const response = await examService.getLatestExamResult(examId);
+                if (response.success) {
+                    setExamResult(response.examResult);
+                } else {
+                    throw new Error(response.error);
+                }
+            } catch (error) {
+                console.error("Error cargando resultado:", error);
+                setError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadResult();
+    }, [examId, location.state]);
 
     useEffect(() => {
         if (examResult && showScore) {
@@ -51,48 +83,6 @@ const ExamResult = () => {
         }
     }, [showScore, examResult])
 
-    const loadExamResult = async () => {
-        try {
-            setLoading(true)
-            // Aquí necesitarías el examResultId, que debería venir del estado o URL
-            const examResultId = location.state?.examResultId
-            if (!examResultId) {
-                setError("No se encontró el resultado del examen")
-                return
-            }
-
-            const data = await examService.getExamResult(examResultId)
-            setExamResult(data.examResult)
-            initializeResult(data.examResult)
-        } catch (error) {
-            console.error("Error cargando resultado:", error)
-            setError("Error cargando el resultado del examen")
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const initializeResult = (result = examResult) => {
-        if (!result) return
-
-        // Mostrar score después de un breve delay
-        setTimeout(() => {setShowScore(true)}, 500)
-
-        // Generar reporte automáticamente
-        generateReport(result.id)
-    }
-
-    const generateReport = async (examResultId) => {
-        try {
-            setGeneratingReport(true)
-            await studentService.generateReport(examResultId)
-            setReportGenerated(true)
-        } catch (error) {
-            console.error("Error generando reporte:", error)
-        } finally {
-            setGeneratingReport(false)
-        }
-    }
 
     const getScoreColor = (percentage) => {
         if (percentage >= 90) return "success"
@@ -161,14 +151,19 @@ const ExamResult = () => {
         return (
             <Container>
                 <Alert variant="danger">
-                <Alert.Heading>Error</Alert.Heading>
-                <p>{error}</p>
-                <Button variant="outline-danger" onClick={() => navigate("/student/dashboard")}>
-                    Volver al Dashboard
-                </Button>
+                    <Alert.Heading>Error</Alert.Heading>
+                    <p>{error}</p>
+                    <div className="d-flex gap-2 mt-3">
+                        <Button variant="primary" onClick={() => navigate(-1)}>
+                            Volver atrás
+                        </Button>
+                        <Button variant="secondary" onClick={() => navigate("/student/dashboard")}>
+                            Ir al Dashboard
+                        </Button>
+                    </div>
                 </Alert>
             </Container>
-        )
+        );
     }
 
     if (!examResult) {
