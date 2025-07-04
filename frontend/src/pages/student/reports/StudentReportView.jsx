@@ -36,53 +36,47 @@ const StudentReportView = () => {
         return value || fallback;
     };
 
-    useEffect(() => {
-    let isMounted = true; 
+    const validateAndSetReportData = (data) => {
+        if (!data?.report || 
+            !data.report.id || 
+            !data.report.examResult || 
+            typeof data.report.examResult.percentage !== 'number') {
+            throw new Error("Estructura de datos del reporte inválida");
+        }
+
+        setReport({
+            id: data.report.id,
+            contentBreakdown: data.report.contentBreakdown || {},
+            strengths: data.report.strengths || [],
+            weaknesses: data.report.weaknesses || [],
+            recommendations: data.report.recommendations || [],
+            assignedProfessor: data.report.assignedProfessor || null,
+            professorSubject: data.report.professorSubject || null,
+            examResult: {
+                percentage: data.report.examResult.percentage || 0,
+                totalScore: data.report.examResult.totalScore || 0,
+                totalQuestions: data.report.examResult.totalQuestions || 0,
+                completedAt: data.report.examResult.completedAt || new Date().toISOString(),
+                exam: {
+                    title: data.report.examResult.exam?.title || 'Examen',
+                    description: data.report.examResult.exam?.description || '',
+                    timeLimit: data.report.examResult.exam?.timeLimit || 0,
+                    passingScore: data.report.examResult.exam?.passingScore || 60
+                }
+            }
+        });
+    };
 
     const loadReport = async () => {
         try {
             console.log("Cargando reporte con ID:", reportId);
             
-            // Validación más completa del ID
             if (!reportId?.match(/^[a-zA-Z0-9-_]+$/)) {
                 throw new Error("Formato de ID de reporte no válido");
             }
 
             const data = await studentService.getReport(reportId);
-            
-            // Validación exhaustiva de la respuesta
-            if (!data?.report || 
-                !data.report.id || 
-                !data.report.examResult || 
-                typeof data.report.examResult.percentage !== 'number') {
-                throw new Error("Estructura de datos del reporte inválida");
-            }
-
-            // Solo actualiza el estado si el componente sigue montado
-            if (isMounted) {
-                setReport({
-                    // Valores por defecto
-                    id: data.report.id,
-                    contentBreakdown: data.report.contentBreakdown || {},
-                    strengths: data.report.strengths || [],
-                    weaknesses: data.report.weaknesses || [],
-                    recommendations: data.report.recommendations || [],
-                    assignedProfessor: data.report.assignedProfessor || null,
-                    professorSubject: data.report.professorSubject || null,
-                    examResult: {
-                        percentage: data.report.examResult.percentage || 0,
-                        totalScore: data.report.examResult.totalScore || 0,
-                        totalQuestions: data.report.examResult.totalQuestions || 0,
-                        completedAt: data.report.examResult.completedAt || new Date().toISOString(),
-                        exam: {
-                            title: data.report.examResult.exam?.title || 'Examen',
-                            description: data.report.examResult.exam?.description || '',
-                            timeLimit: data.report.examResult.exam?.timeLimit || 0,
-                            passingScore: data.report.examResult.exam?.passingScore || 60
-                        }
-                    }
-                });
-            }
+            validateAndSetReportData(data);
             
         } catch (error) {
             console.error("Error cargando reporte:", {
@@ -91,34 +85,56 @@ const StudentReportView = () => {
                 stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
             });
             
-            if (isMounted) {
-                setError(error.message || "Error desconocido al cargar el reporte");
-                
-                // Redirigir para varios tipos de errores
-                if (error.message.match(/no válido|inválida|no encontrado/i)) {
-                    navigate("/student/reports", {
-                        state: { 
-                            error: error.message,
-                            reportId 
-                        },
-                        replace: true
-                    });
-                }
-            }
-        } finally {
-            if (isMounted) {
-                setLoading(false);
-            }
+            throw error;
         }
     };
 
-    loadReport();
-
-    // Función de limpieza
-    return () => {
-        isMounted = false;
+    const handleLoadReport = async () => {
+        setLoading(true);
+        setError(null);
+        
+        try {
+            await loadReport();
+        } catch (error) {
+            setError(error.message || "Error desconocido al cargar el reporte");
+                
+            if (error.message.match(/no válido|inválida|no encontrado/i)) {
+                navigate("/student/reports", {
+                    state: { 
+                        error: error.message,
+                        reportId 
+                    },
+                    replace: true
+                });
+            }
+        } finally {
+            setLoading(false);
+        }
     };
-}, [reportId, navigate]); 
+
+    useEffect(() => {
+        let isMounted = true; 
+
+        const initialize = async () => {
+            try {
+                await handleLoadReport();
+            } catch (error) {
+                if (isMounted) {
+                    setError(error.message);
+                }
+            }
+        };
+
+        initialize();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [reportId, navigate]); 
+
+    const handleRetry = () => {
+        handleLoadReport();
+    };
 
     const getScoreColor = (percentage) => {
         if (percentage >= 90) return "success"
