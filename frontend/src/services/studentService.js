@@ -17,23 +17,23 @@ export const studentService = {
         try {
             // 1. Preparar parámetros con validación
             const params = {
-                params: {
-                    search: filters.search || undefined,
-                    dateFrom: filters.dateFrom || undefined,
-                    dateTo: filters.dateTo || undefined,
-                    minScore: Number.isNaN(Number(filters.minScore)) ? undefined : Number(filters.minScore),
-                    maxScore: Number.isNaN(Number(filters.maxScore)) ? undefined : Number(filters.maxScore),
-                    page: Math.max(1, Number(filters.page) || 1),
-                    limit: Math.min(50, Math.max(1, Number(filters.limit) || 10))
-                }
-            };
+            params: {
+                ...(filters.search && { search: filters.search }),
+                ...(filters.dateFrom && { dateFrom: filters.dateFrom }),
+                ...(filters.dateTo && { dateTo: filters.dateTo }),
+                ...(filters.minScore && { minScore: filters.minScore }),
+                ...(filters.maxScore && { maxScore: filters.maxScore }),
+                page: Math.max(1, parseInt(filters.page) || 1),
+                limit: Math.min(50, Math.max(1, parseInt(filters.limit) || 10))
+            }
+        };
 
             // 2. Hacer la petición
             const response = await API.get("/reports/my/reports", params);
             
             // 3. Validación exhaustiva de la respuesta
-            if (!response.data) {
-                throw new Error("El servidor no devolvió datos");
+            if (!response.data || !Array.isArray(response.data.reports)) {
+                throw new Error("Respuesta del servidor inválida");
             }
 
             // Validar estructura mínima esperada
@@ -50,18 +50,41 @@ export const studentService = {
                 throw new Error("Formato de datos recibido no válido");
             }
 
+            // Normalización de datos
+            const normalizedReports = response.data.reports.map(report => ({
+                id: report.id,
+                contentBreakdown: report.contentBreakdown || {},
+                strengths: report.strengths || [],
+                weaknesses: report.weaknesses || [],
+                recommendations: report.recommendations || [],
+                examResult: {
+                    id: report.examResult?.id || '',
+                    percentage: report.examResult?.percentage || 0,
+                    completedAt: report.examResult?.completedAt || report.createdAt,
+                    totalScore: report.examResult?.totalScore || 0,
+                    totalQuestions: report.examResult?.totalQuestions || 0,
+                    exam: {
+                        title: report.examResult?.exam?.title || "Examen sin título",
+                        description: report.examResult?.exam?.description || ""
+                    }
+                }
+            }));
+
             // 4. Procesar y devolver datos
             return {
                 success: true,
-                reports: response.data.reports,
-                pagination: {
-                    total: response.data.pagination?.total || response.data.reports.length,
-                    pages: response.data.pagination?.pages || 1,
-                    currentPage: response.data.pagination?.currentPage || params.params.page,
-                    limit: response.data.pagination?.limit || params.params.limit
+                reports: normalizedReports,
+                pagination: response.data.pagination || {
+                    total: normalizedReports.length,
+                    pages: 1,
+                    currentPage: params.params.page,
+                    limit: params.params.limit
                 },
-                // Solo incluir stats si viene en la respuesta
-                ...(response.data.stats && { stats: response.data.stats })
+                stats: response.data.stats || {
+                    totalReports: normalizedReports.length,
+                    averageScore: normalizedReports.reduce((acc, r) => acc + (r.examResult?.percentage || 0), 0) / Math.max(1, normalizedReports.length),
+                    bestScore: Math.max(...normalizedReports.map(r => r.examResult?.percentage || 0), 0)
+                }
             };
 
         } catch (error) {

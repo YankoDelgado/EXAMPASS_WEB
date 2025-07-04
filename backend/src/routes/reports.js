@@ -394,6 +394,10 @@ router.get("/my/reports", authenticateToken, requireStudent, async (req, res) =>
         const userId = req.user.id;
         const { search, dateFrom, dateTo, minScore, maxScore, page = 1, limit = 10 } = req.query;
 
+        // Validación de parámetros
+        const parsedPage = Math.max(1, parseInt(page));
+        const parsedLimit = Math.min(50, Math.max(1, parseInt(limit)));
+
         // Construir condiciones WHERE
         const where = {
             examResult: { 
@@ -405,67 +409,40 @@ router.get("/my/reports", authenticateToken, requireStudent, async (req, res) =>
                 }),
                 ...((minScore || maxScore) && {
                     percentage: {
-                        ...(minScore && { gte: Number(minScore) }),
-                        ...(maxScore && { lte: Number(maxScore) })
+                        ...(minScore && { gte: parseFloat(minScore) }),
+                        ...(maxScore && { lte: parseFloat(maxScore) })
+                    }
+                }),
+                ...((dateFrom || dateTo) && {
+                    completedAt: {
+                        ...(dateFrom && { gte: new Date(dateFrom) }),
+                        ...(dateTo && { lte: new Date(`${dateTo}T23:59:59.999Z`) })
                     }
                 })
-            },
-            ...(dateFrom && {
-                examResult: {
-                    completedAt: { gte: new Date(dateFrom) }
-                }
-            }),
-            ...(dateTo && {
-                examResult: {
-                    completedAt: { lte: new Date(dateTo) }
-                }
-            })
+            }
         };
 
         // Obtener reportes con paginación (VERSIÓN CORREGIDA)
         const [reports, total] = await prisma.$transaction([
             prisma.examReport.findMany({
                 where,
-                select: {  // Cambiamos de include a select para campos escalares
-                    id: true,
-                    contentBreakdown: true,
-                    strengths: true,
-                    weaknesses: true,
-                    recommendations: true,
-                    assignedProfessor: true,  // Campo escalar
-                    professorSubject: true,   // Campo escalar
-                    createdAt: true,
-                    updatedAt: true,
+                include: {
                     examResult: {
-                        select: {
-                            id: true,
-                            percentage: true,
-                            completedAt: true,
-                            totalScore: true,
-                            totalQuestions: true,
+                        include: {
                             exam: {
                                 select: {
-                                    id: true,
                                     title: true,
                                     description: true
-                                }
-                            },
-                            user: {
-                                select: {
-                                    id: true,
-                                    name: true
                                 }
                             }
                         }
                     }
                 },
                 orderBy: { 
-                    examResult: {
-                        completedAt: 'desc' 
-                    } 
+                    createdAt: 'desc' 
                 },
-                skip: (Number(page) - 1) * Number(limit),
-                take: Number(limit)
+                skip: (parsedPage - 1) * parsedLimit,
+                take: parsedLimit
             }),
             prisma.examReport.count({ where })
         ]);
@@ -475,12 +452,18 @@ router.get("/my/reports", authenticateToken, requireStudent, async (req, res) =>
 
         res.json({
             success: true,
-            reports,
+            reports: reports.map(report => ({
+                ...report,
+                examResult: {
+                    ...report.examResult,
+                    exam: report.examResult.exam || { title: "Examen no disponible" }
+                }
+            })),
             pagination: {
                 total,
-                pages: Math.ceil(total / Number(limit)),
-                currentPage: Number(page),
-                limit: Number(limit)
+                pages: Math.ceil(total / parsedLimit),
+                currentPage: parsedPage,
+                limit: parsedLimit
             },
             stats
         });

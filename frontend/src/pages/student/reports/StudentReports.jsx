@@ -45,61 +45,76 @@ const StudentReports = () => {
             setLoading(true);
             setError("");
             
-            console.log("Enviando filters al backend:", filters); // ← Log de diagnóstico
-            
             const response = await studentService.getMyReports(filters);
-            console.log("Respuesta del backend:", response); // ← Log de diagnóstico
             
             if (!response.success) {
                 throw new Error(response.error || "Error al cargar reportes");
             }
 
-            const { reports: reportData = [], pagination: paginationData = {} } = response;
+            // Procesamiento seguro de reportes
+            const processedReports = response.reports.map(report => {
+                const percentage = report.examResult?.percentage || 0;
+                const examTitle = report.examResult?.exam?.title || "Examen sin título";
+                const completedAt = report.examResult?.completedAt 
+                    ? new Date(report.examResult.completedAt)
+                    : new Date();
 
-            // Validación profunda de datos
-            if (!Array.isArray(reportData)) {
-                throw new Error("Formato de datos inválido: se esperaba array de reportes");
-            }
-
-            const processedReports = reportData.map(report => {
-                if (!report || !report.id) {
-                    console.warn("Reporte inválido omitido:", report);
-                    return null;
-                }
-                
                 return {
                     ...report,
+                    id: report.id || Math.random().toString(36).substring(2, 9),
                     examResult: {
-                        percentage: report.examResult?.percentage || 0,
-                        completedAt: report.examResult?.completedAt || report.createdAt || new Date().toISOString(),
+                        ...report.examResult,
+                        percentage,
+                        completedAt: completedAt.toISOString(),
                         totalQuestions: report.examResult?.totalQuestions || 0,
                         exam: {
-                            title: report.examResult?.exam?.title || "Examen sin título",
-                            ...report.examResult?.exam
-                        },
-                        ...report.examResult
+                            title: examTitle,
+                            description: report.examResult?.exam?.description || ""
+                        }
                     }
                 };
-            }).filter(Boolean);
-
-            setReports(processedReports);
-            setPagination({
-                total: paginationData.total || processedReports.length,
-                pages: paginationData.pages || 1,
-                currentPage: paginationData.currentPage || filters.page,
-                limit: paginationData.limit || filters.limit
             });
 
-            console.log("Reportes procesados:", processedReports); // ← Log de diagnóstico
+            setReports(processedReports);
+            setPagination(response.pagination);
+            
+            // Actualizar estadísticas solo si hay datos
+            if (response.stats && processedReports.length > 0) {
+                setStats({
+                    totalReports: response.stats.totalReports,
+                    averageScore: Math.round(response.stats.averageScore),
+                    bestScore: Math.round(response.stats.bestScore),
+                    lastExamDate: processedReports[0]?.examResult?.completedAt || null,
+                    improvementTrend: calculateTrend(processedReports)
+                });
+            }
 
         } catch (error) {
             setError(error.message);
             setReports([]);
-            console.error("Error cargando reportes:", error);
+            console.error("Error en loadReports:", {
+                error: error.message,
+                filters
+            });
         } finally {
             setLoading(false);
         }
-    }
+    };
+
+    // Función auxiliar para calcular tendencia
+    const calculateTrend = (reports) => {
+        if (reports.length < 2) return "stable";
+        
+        const lastThree = reports.slice(0, 3).map(r => r.examResult.percentage);
+        const avgRecent = lastThree.reduce((a, b) => a + b, 0) / lastThree.length;
+        const avgPrevious = reports.length > 3 
+            ? reports.slice(3, 6).reduce((a, r) => a + r.examResult.percentage, 0) / 3
+            : avgRecent;
+        
+        return avgRecent > avgPrevious + 5 ? "improving" 
+            : avgRecent < avgPrevious - 5 ? "declining" 
+            : "stable";
+    };
 
     const loadPersonalStats = async () => {
     try {
