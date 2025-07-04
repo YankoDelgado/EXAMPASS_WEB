@@ -68,8 +68,8 @@ const StudentReportView = () => {
         }
     }
 
-    console.log("Título del examen:", data.report.examResult.exam.title);
-    console.log("Descripción:", data.report.examResult.exam.description);
+    console.log("Título del examen:", report.examResult.exam.title);
+    console.log("Descripción:", report.examResult.exam.description);
 
 
     const getScoreColor = (percentage) => {
